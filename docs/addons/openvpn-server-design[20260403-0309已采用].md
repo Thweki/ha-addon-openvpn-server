@@ -112,6 +112,11 @@
 6. `持久化层`
 - 使用 `/data` 保存配置、PKI 材料、生成的客户端文件、状态缓存。
 
+补充实现状态：
+
+- Add-on 已提供 `icon.png` 与 `logo.png`，用于 Home Assistant Add-on Store 展示。
+- 仓库默认 README 使用英文，并提供中文入口文档。
+
 ## 6. 推荐目录结构
 
 ```text

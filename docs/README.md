@@ -2,8 +2,8 @@
 
 ## 当前方案
 
-- [Home Assistant OpenVPN Server Add-on 设计方案[20260403-0309已采用]](/home/thweki/Project/home-assistant/openvpn_server/docs/addons/openvpn-server-design[20260403-0309已采用].md)
-- [Home Assistant OpenVPN Server Add-on 配置界面优化方案[20260403-2002已采用]](/home/thweki/Project/home-assistant/openvpn_server/docs/addons/openvpn-config-ux-optimization[20260403-2002已采用].md)
+- [Home Assistant OpenVPN Server Add-on 设计方案[20260403-0309已采用]](addons/openvpn-server-design[20260403-0309已采用].md)
+- [Home Assistant OpenVPN Server Add-on 配置界面优化方案[20260403-2002已采用]](addons/openvpn-config-ux-optimization[20260403-2002已采用].md)
 
 ## 说明
 

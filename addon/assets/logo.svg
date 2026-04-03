@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512" role="img" aria-label="OpenVPN Server logo">
+  <defs>
+    <linearGradient id="panel" x1="52" y1="48" x2="454" y2="466" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#0b3246"/>
+      <stop offset="1" stop-color="#16a8b4"/>
+    </linearGradient>
+    <linearGradient id="badge" x1="144" y1="116" x2="144" y2="300" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#ffffff"/>
+      <stop offset="1" stop-color="#b7d8e7"/>
+    </linearGradient>
+  </defs>
+  <rect x="24" y="24" width="464" height="464" rx="96" fill="url(#panel)"/>
+  <rect x="56" y="56" width="400" height="400" rx="76" fill="#091a25" fill-opacity="0.18"/>
+  <g transform="translate(64 84)">
+    <path d="M80 16l54 20v42c0 37-21 63-54 83-33-20-54-46-54-83V36l54-20z" fill="url(#badge)"/>
+    <path d="M80 42c17 0 30 13 30 30v9h8c6 0 11 5 11 11v34c0 6-5 11-11 11H42c-6 0-11-5-11-11V92c0-6 5-11 11-11h8v-9c0-17 13-30 30-30zm0 18c-7 0-12 5-12 12v9h24v-9c0-7-5-12-12-12z" fill="#0d5f7c"/>
+    <path d="M53 109c14-10 39-10 54 0" fill="none" stroke="#f5fbff" stroke-width="10" stroke-linecap="round"/>
+    <circle cx="80" cy="110" r="8" fill="#f5fbff"/>
+    <path d="M80 116v18" fill="none" stroke="#f5fbff" stroke-width="8" stroke-linecap="round"/>
+  </g>
+  <g transform="translate(206 150)">
+    <text x="0" y="84" font-family="DejaVu Sans, Arial, sans-serif" font-size="84" font-weight="700" fill="#f6fbff">OVPN</text>
+    <rect x="2" y="110" width="214" height="12" rx="6" fill="#9bd8df"/>
+    <text x="0" y="170" font-family="DejaVu Sans, Arial, sans-serif" font-size="34" font-weight="600" letter-spacing="2" fill="#d8f4f7">SERVER ADD-ON</text>
+    <text x="0" y="214" font-family="DejaVu Sans, Arial, sans-serif" font-size="24" fill="#d6edf2">Home Assistant OS</text>
+  </g>
+</svg>
