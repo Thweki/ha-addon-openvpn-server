@@ -8,7 +8,7 @@ Repository:
 
 Chinese documentation:
 
-- [README.zh-CN.md](../README.zh-CN.md)
+- [README.zh-CN.md](https://github.com/Thweki/ha-addon-openvpn-server/blob/main/README.zh-CN.md)
 
 ## Quick Start
 

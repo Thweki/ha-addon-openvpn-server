@@ -2,9 +2,9 @@
 
 Full repository documentation:
 
-- [README.md](../README.md)
-- [README.zh-CN.md](../README.zh-CN.md)
+- [README.md](https://github.com/Thweki/ha-addon-openvpn-server/blob/main/README.md)
+- [README.zh-CN.md](https://github.com/Thweki/ha-addon-openvpn-server/blob/main/README.zh-CN.md)
 
 Design documents:
 
-- [docs/README.md](../docs/README.md)
+- [docs/README.md](https://github.com/Thweki/ha-addon-openvpn-server/blob/main/docs/README.md)
