@@ -1,0 +1,4 @@
+{
+  "name": "OpenVPN 服务端",
+  "description": "运行于 Home Assistant OS 的 OpenVPN 服务端插件"
+}

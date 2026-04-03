@@ -1,0 +1,69 @@
+name: "OpenVPN Server"
+slug: "openvpn_server"
+description: "OpenVPN server add-on for Home Assistant OS"
+version: "0.1.6"
+arch:
+  - aarch64
+  - amd64
+init: false
+startup: services
+boot: auto
+host_network: true
+privileged:
+  - NET_ADMIN
+devices:
+  - /dev/net/tun
+map:
+  - addon_config:rw
+  - ssl:rw
+  - share:rw
+options:
+  public_endpoint: ""
+  listen_port: 1194
+  public_port: 1194
+  protocol: "udp"
+  lan_networks: ""
+  nat_enabled: true
+  redirect_gateway: false
+  vpn_subnet: "10.8.0.0"
+  vpn_netmask: "255.255.255.0"
+  dns: "1.1.1.1, 8.8.8.8"
+  device: "tun"
+  cipher: "AES-256-GCM"
+  auth: "SHA256"
+  tls_crypt: true
+  client_to_client: false
+  duplicate_cn: false
+  server_host: "0.0.0.0"
+  extra_routes: ""
+  inactive_timeout: 0
+  keepalive: "10 120"
+  log_level: "info"
+  status_interval: 30
+  client_name: "homeassistant"
+  client_expire_days: 825
+schema:
+  public_endpoint: str?
+  listen_port: port
+  public_port: port
+  protocol: list(udp|tcp)
+  lan_networks: str?
+  nat_enabled: bool
+  redirect_gateway: bool
+  vpn_subnet: str
+  vpn_netmask: str
+  dns: str
+  device: str
+  cipher: str
+  auth: str
+  tls_crypt: bool
+  client_to_client: bool
+  duplicate_cn: bool
+  server_host: str
+  extra_routes: str?
+  inactive_timeout: int
+  keepalive: str
+  log_level: str
+  status_interval: int
+  client_name: str
+  client_expire_days: int
