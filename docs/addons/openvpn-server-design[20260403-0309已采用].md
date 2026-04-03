@@ -86,6 +86,8 @@
 
 1. `Home Assistant Add-on 包装层`
 - `config.yaml`
+- `README.md`
+- `DOCS.md`
 - `Dockerfile`
 - `build.yaml`
 - `translations/*.json`
@@ -115,6 +117,7 @@
 补充实现状态：
 
 - Add-on 已提供 `icon.png` 与 `logo.png`，用于 Home Assistant Add-on Store 展示。
+- Add-on 已提供 `addon/README.md` 与 `addon/DOCS.md`，用于 Home Assistant 详情页和文档入口展示。
 - 仓库默认 README 使用英文，并提供中文入口文档。
 
 ## 6. 推荐目录结构
