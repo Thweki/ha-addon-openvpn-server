@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.2.1
+
+- Bind the panel to every internal address instead of a single detected bridge address, so Home
+  Assistant ingress can reach it on any Home Assistant OS version. The LAN and `lan_networks`
+  are still excluded, because the panel serves client private keys.
+- Only emit `explicit-exit-notify` for UDP; OpenVPN ignores it on TCP and logged a notice.
+
 ## 0.2.0
 
 ### Added

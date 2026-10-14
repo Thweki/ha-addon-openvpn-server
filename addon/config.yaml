@@ -1,7 +1,7 @@
 name: "OpenVPN Server"
 slug: "openvpn_server"
 description: "OpenVPN server add-on for Home Assistant OS"
-version: "0.2.0"
+version: "0.2.1"
 url: "https://github.com/Thweki/ha-addon-openvpn-server"
 arch:
   - aarch64
