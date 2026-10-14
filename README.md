@@ -10,9 +10,9 @@ This repository provides a Home Assistant Add-on that:
 
 - runs an OpenVPN server on `Home Assistant OS`
 - initializes and manages PKI with EasyRSA
-- exports client profiles to the Home Assistant share folder
-- supports LAN route push and NAT-based home network access
-- supports client issue and revoke workflows through shared request files
+- gives VPN clients access to the home LAN through pushed routes plus NAT
+- ships an add-on panel (Home Assistant ingress) for clients, health and diagnostics
+- supports client issue and revoke workflows from the panel, from the CLI, or from shared request files
 
 ## Installation
 
@@ -37,6 +37,7 @@ listen_port: 1194
 public_port: 443
 protocol: udp
 lan_networks: 192.168.1.0/24
+nat_enabled: true
 dns: 1.1.1.1, 8.8.8.8
 extra_routes: ""
 ```
@@ -47,8 +48,17 @@ Field summary:
 - `listen_port`: local port OpenVPN listens on
 - `public_port`: public port written into exported `.ovpn` files
 - `lan_networks`: LAN subnets clients should reach, comma-separated
+- `nat_enabled`: required for clients to reach LAN devices
 - `dns`: DNS servers pushed to clients, comma-separated
 - `extra_routes`: optional extra pushed routes, comma-separated
+
+## The Add-on Panel
+
+`Settings -> Add-ons -> OpenVPN Server -> Open Web UI` (administrators only):
+
+- **Health**: LAN forwarding/NAT, `ip_forward`, CRL validity, port mapping and configuration warnings
+- **Clients**: issue, revoke, see who is online and download `.ovpn` profiles
+- **Maintenance**: rebuild the CRL, restart OpenVPN, download a diagnostics bundle
 
 ## Common Deployment Examples
 
@@ -104,39 +114,56 @@ flowchart LR
   D --> E["Home LAN<br/>192.168.1.0/24"]
 ```
 
+## Client Certificates
+
+Two modes, selected by `duplicate_cn`:
+
+| `duplicate_cn` | Behaviour |
+| --- | --- |
+| `false` (recommended) | One certificate per device. Each client gets a fixed VPN address (`fixed_client_ips`), so router and firewall rules stay predictable and revoking one device leaves the others alone. |
+| `true` | One profile can be shared by several devices at once. Revoking that certificate logs out all of them, and fixed addresses are disabled. |
+
+Issue and revoke from the panel, or over the CLI:
+
+```bash
+openvpn-addon client create iphone
+openvpn-addon client revoke iphone
+openvpn-addon client list
+```
+
 ## Client Profiles
 
-Default client profile:
+Client profiles embed the client private key and are written with mode `0600`. Download them from the panel.
 
-- `/share/openvpn_server/clients/homeassistant.ovpn`
+Setting `publish_profiles_to_share: true` also copies them to `/share/openvpn_server/clients/`. That path is readable by other add-ons, so leave it off unless you need it.
 
-Issue a new client:
+## Request Files (optional, scriptable)
 
-- create `/share/openvpn_server/requests/<name>.json`
-- request body:
+Write a file into `/share/openvpn_server/requests/` and it is applied while the add-on runs — no restart, no dropped sessions:
 
 ```json
 {"action":"issue","client_name":"iphone"}
 ```
 
-Revoke a client:
-
-- create `/share/openvpn_server/requests/<name>.json`
-- request body:
-
 ```json
 {"action":"revoke","client_name":"iphone"}
 ```
 
-Request processing outputs:
+Outputs:
 
-- profiles: `/share/openvpn_server/clients/`
 - results: `/share/openvpn_server/results/`
-- archive: `/share/openvpn_server/archive/`
+- processed requests: `/share/openvpn_server/archive/`
+- invalid requests: `/share/openvpn_server/rejected/` (with a result file explaining the reason)
+
+Malformed request files are quarantined instead of stopping the add-on.
 
 ## Notes
 
 - If `public_endpoint` is empty, client export is skipped.
-- If `public_port` differs from `listen_port`, your router or firewall must forward the external port to the Home Assistant host.
+- If `public_port` differs from `listen_port`, your router must forward the external port to the local one.
+- If `nat_enabled` is off, clients can reach only the VPN server itself even when `lan_networks` is set.
 - If `lan_networks` is empty, clients will not automatically receive home LAN routes.
 - `dns`, `lan_networks`, and `extra_routes` accept comma-separated values.
+- Prefer `protocol: udp`. Use TCP only when your network blocks UDP.
+- For troubleshooting see [addon/DOCS.md](addon/DOCS.md), or use the panel's **Download diagnostics**.
+- Change history: [addon/CHANGELOG.md](addon/CHANGELOG.md).

@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import dataclasses
+import ipaddress
 import json
 import os
 from dataclasses import dataclass, field
@@ -31,12 +33,17 @@ class AddonConfig:
     tls_crypt: bool = True
     client_to_client: bool = False
     duplicate_cn: bool = False
+    fixed_client_ips: bool = True
+    publish_profiles_to_share: bool = False
+    crl_valid_days: int = 3650
     inactive_timeout: int = 0
     keepalive: str = "10 120"
     log_level: str = "info"
     status_interval: int = 30
     client_name: str = "homeassistant"
     client_expire_days: int = 825
+    # Populated by load_config(); never set through options.json in practice.
+    unknown_options: list[str] = field(default_factory=list)
 
     @property
     def runtime_dir(self) -> Path:
@@ -75,6 +82,10 @@ class AddonConfig:
         return SHARE_ROOT / "archive"
 
     @property
+    def share_rejected_dir(self) -> Path:
+        return SHARE_ROOT / "rejected"
+
+    @property
     def server_conf_path(self) -> Path:
         return self.runtime_dir / "server.conf"
 
@@ -91,12 +102,30 @@ class AddonConfig:
         return self.pki_dir / "ta.key"
 
     @property
+    def crl_path(self) -> Path:
+        return self.pki_dir / "crl.pem"
+
+    @property
     def ccd_dir(self) -> Path:
         return self.runtime_dir / "ccd"
 
     @property
+    def client_ips_path(self) -> Path:
+        return self.runtime_dir / "client_ips.json"
+
+    @property
     def public_address(self) -> str:
         return self.public_endpoint.strip() or self.server_host.strip()
+
+    @property
+    def vpn_network(self) -> str:
+        """Normalised CIDR form of the VPN subnet, e.g. 10.8.0.0/24."""
+        return str(ipaddress.IPv4Network(f"{self.vpn_subnet}/{self.vpn_netmask}", strict=False))
+
+    @property
+    def uses_client_config_dir(self) -> bool:
+        """ccd is only meaningful when every client has its own certificate."""
+        return self.fixed_client_ips and not self.duplicate_cn
 
 
 def load_config(path: Path | None = None) -> AddonConfig:
@@ -105,6 +134,9 @@ def load_config(path: Path | None = None) -> AddonConfig:
         payload = json.loads(options_path.read_text(encoding="utf-8"))
     else:
         payload = {}
+
+    if not isinstance(payload, dict):
+        raise ValueError(f"Add-on options must be a JSON object, got {type(payload).__name__}")
 
     return AddonConfig(**_normalize_payload(payload))
 
@@ -126,7 +158,59 @@ def _normalize_payload(payload: dict[str, object]) -> dict[str, object]:
         fallback=normalized.pop("push_routes", None),
         default=[],
     )
-    return normalized
+
+    known = {item.name for item in dataclasses.fields(AddonConfig)}
+    unknown = sorted(key for key in normalized if key not in known)
+    for key in unknown:
+        normalized.pop(key, None)
+    normalized["unknown_options"] = unknown
+
+    return _coerce_scalars(normalized)
+
+
+def _coerce_scalars(payload: dict[str, object]) -> dict[str, object]:
+    """Coerce hand-edited options.json values to the declared field types."""
+    result: dict[str, object] = {}
+    for item in dataclasses.fields(AddonConfig):
+        if item.name not in payload:
+            continue
+        value = payload[item.name]
+        annotation = item.type if isinstance(item.type, str) else getattr(item.type, "__name__", "")
+        if annotation == "bool":
+            result[item.name] = _coerce_bool(value)
+        elif annotation == "int":
+            result[item.name] = _coerce_int(value)
+        else:
+            result[item.name] = value
+    return result
+
+
+def _coerce_bool(value: object) -> bool:
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, (int, float)):
+        return bool(value)
+    if isinstance(value, str):
+        text = value.strip().lower()
+        if text in {"true", "yes", "on", "1"}:
+            return True
+        if text in {"false", "no", "off", "0", ""}:
+            return False
+    return bool(value)
+
+
+def _coerce_int(value: object) -> int:
+    if isinstance(value, bool):
+        return int(value)
+    if isinstance(value, int):
+        return value
+    if isinstance(value, float):
+        return int(value)
+    if isinstance(value, str):
+        text = value.strip()
+        if text.lstrip("-").isdigit():
+            return int(text)
+    raise ValueError(f"Expected an integer option, got {value!r}")
 
 
 def _parse_list_option(

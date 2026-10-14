@@ -9,6 +9,8 @@ from .config import AddonConfig
 CLIENT_NAME_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.-]{0,62}$")
 LOG_LEVELS = {"trace", "debug", "info", "notice", "warning", "error", "fatal"}
 PROTOCOLS = {"udp", "tcp"}
+# Below this many days the CRL has to be rebuilt by restarting the add-on.
+CRL_REBUILD_WARNING_DAYS = 90
 
 
 def validate_config(config: AddonConfig) -> None:
@@ -49,9 +51,12 @@ def validate_config(config: AddonConfig) -> None:
     if config.client_expire_days <= 0:
         raise ValueError("client_expire_days must be > 0")
 
+    if config.crl_valid_days <= 0:
+        raise ValueError("crl_valid_days must be > 0")
+
     validate_client_name(config.client_name)
 
-    vpn_network = ipaddress.IPv4Network(f"{config.vpn_subnet}/{config.vpn_netmask}", strict=False)
+    vpn_network = ipaddress.IPv4Network(config.vpn_network, strict=False)
     for item in config.local_networks:
         local_network = ipaddress.IPv4Network(item, strict=False)
         if vpn_network.overlaps(local_network):
@@ -68,6 +73,71 @@ def validate_client_name(name: str) -> None:
         )
 
 
+def config_warnings(config: AddonConfig) -> list[str]:
+    warnings: list[str] = []
+
+    for option in config.unknown_options:
+        warnings.append(
+            f"Unknown option '{option}' is set but not used by this version; remove it from the "
+            "add-on configuration to silence this warning."
+        )
+
+    if not config.public_endpoint.strip():
+        warnings.append(
+            "public_endpoint is empty; client profile export will be skipped until a routable address or domain is set."
+        )
+
+    if not config.nat_enabled and config.local_networks:
+        warnings.append(
+            "nat_enabled is off but lan_networks is set; VPN clients will still receive routes to "
+            f"{', '.join(config.local_networks)} but the add-on will not NAT or forward them, so "
+            "clients can only reach the VPN server itself. Enable nat_enabled to reach your LAN."
+        )
+
+    if config.nat_enabled and not config.local_networks:
+        warnings.append(
+            "nat_enabled is on but local_networks is empty; VPN clients will not automatically receive routes to your home LAN."
+        )
+
+    if config.redirect_gateway:
+        warnings.append(
+            "redirect_gateway is enabled; all client internet traffic will be sent through the VPN."
+        )
+
+    if config.duplicate_cn:
+        warnings.append(
+            "duplicate_cn is enabled; multiple devices can share one certificate, which weakens client-level revocation."
+        )
+        if config.fixed_client_ips:
+            warnings.append(
+                "fixed_client_ips is enabled but duplicate_cn is on; one shared certificate cannot be "
+                "pinned to a single VPN address, so per-client IP assignment is skipped. Disable "
+                "duplicate_cn for one certificate per device."
+            )
+
+    if config.public_port != config.listen_port:
+        warnings.append(
+            "public_port differs from listen_port; ensure your router or firewall forwards the external port to the local listening port."
+        )
+
+    for item in config.local_networks:
+        network = ipaddress.IPv4Network(item, strict=False)
+        if network.prefixlen in (32, 0):
+            warnings.append(
+                f"lan_networks entry '{item}' is not a subnet; use the network address with a prefix, "
+                "for example 192.168.1.0/24."
+            )
+
+    if config.crl_valid_days < CRL_REBUILD_WARNING_DAYS:
+        warnings.append(
+            f"crl_valid_days is only {config.crl_valid_days} day(s); the certificate revocation list is "
+            "rebuilt at add-on startup, so the add-on must be restarted before it expires. A longer "
+            "value is recommended."
+        )
+
+    return warnings
+
+
 def _validate_public_endpoint(value: str) -> None:
     if ":" in value:
         host, port = value.rsplit(":", 1)
@@ -79,28 +149,3 @@ def _validate_public_endpoint(value: str) -> None:
 
     if not value.strip():
         raise ValueError("public_endpoint is empty")
-
-
-def config_warnings(config: AddonConfig) -> list[str]:
-    warnings: list[str] = []
-    if not config.public_endpoint.strip():
-        warnings.append(
-            "public_endpoint is empty; client profile export will be skipped until a routable address or domain is set."
-        )
-    if config.nat_enabled and not config.local_networks:
-        warnings.append(
-            "nat_enabled is on but local_networks is empty; VPN clients will not automatically receive routes to your home LAN."
-        )
-    if config.redirect_gateway:
-        warnings.append(
-            "redirect_gateway is enabled; all client internet traffic will be sent through the VPN."
-        )
-    if config.duplicate_cn:
-        warnings.append(
-            "duplicate_cn is enabled; multiple devices can share one certificate, which weakens client-level revocation."
-        )
-    if config.public_port != config.listen_port:
-        warnings.append(
-            "public_port differs from listen_port; ensure your router or firewall forwards the external port to the local listening port."
-        )
-    return warnings

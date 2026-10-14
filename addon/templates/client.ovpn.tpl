@@ -7,7 +7,8 @@ nobind
 persist-key
 persist-tun
 remote-cert-tls server
-cipher ${cipher}
+data-ciphers ${data_ciphers}
+tls-version-min ${tls_version_min}
 auth ${auth}
 verb 3
 

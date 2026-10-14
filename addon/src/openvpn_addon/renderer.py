@@ -9,6 +9,9 @@ from .config import AddonConfig
 
 TEMPLATES_DIR = Path("/opt/openvpn_server/templates")
 
+TLS_VERSION_MIN = "1.2"
+DEFAULT_DATA_CIPHERS = ["AES-256-GCM", "AES-128-GCM", "CHACHA20-POLY1305"]
+
 
 def render_server_config(config: AddonConfig) -> str:
     template = Template((TEMPLATES_DIR / "server.conf.tpl").read_text(encoding="utf-8"))
@@ -22,13 +25,15 @@ def render_server_config(config: AddonConfig) -> str:
         server_cert=config.pki_dir / "issued" / "server.crt",
         server_key=config.pki_dir / "private" / "server.key",
         ca_cert=config.pki_dir / "ca.crt",
-        crl=config.pki_dir / "crl.pem",
+        crl=config.crl_path,
         tls_crypt_line=_tls_crypt_line(config),
-        ccd_dir=config.ccd_dir,
+        client_config_dir_line=_client_config_dir_line(config),
         status_path=config.status_path,
         keepalive=config.keepalive,
+        data_ciphers=_data_ciphers(config),
         cipher=config.cipher,
         auth=config.auth,
+        tls_version_min=TLS_VERSION_MIN,
         duplicate_cn=_bool_directive(config.duplicate_cn, "duplicate-cn"),
         client_to_client=_bool_directive(config.client_to_client, "client-to-client"),
         redirect_gateway=_redirect_gateway(config.redirect_gateway),
@@ -47,8 +52,9 @@ def render_client_config(config: AddonConfig, client_name: str) -> str:
         remote_host=remote_host,
         remote_port=remote_port,
         protocol=config.protocol,
-        cipher=config.cipher,
+        data_ciphers=_data_ciphers(config),
         auth=config.auth,
+        tls_version_min=TLS_VERSION_MIN,
         tls_crypt_block=_tls_crypt_block(config),
         ca=_read_file(config.pki_dir / "ca.crt"),
         cert=_read_cert_body(config.pki_dir / "issued" / f"{client_name}.crt"),
@@ -62,6 +68,15 @@ def _resolve_remote(config: AddonConfig) -> tuple[str, int]:
         host, port = endpoint.rsplit(":", 1)
         return host, int(port)
     return endpoint, config.public_port
+
+
+def _data_ciphers(config: AddonConfig) -> str:
+    ciphers: list[str] = []
+    for item in [config.cipher, *DEFAULT_DATA_CIPHERS]:
+        name = item.strip()
+        if name and name not in ciphers:
+            ciphers.append(name)
+    return ":".join(ciphers)
 
 
 def _push_dns(items: list[str]) -> str:
@@ -90,6 +105,13 @@ def _format_push_routes(networks: list[ipaddress._BaseNetwork]) -> str:
 
 def _tls_crypt_line(config: AddonConfig) -> str:
     return f"tls-crypt {config.tls_crypt_path}" if config.tls_crypt else ""
+
+
+def _client_config_dir_line(config: AddonConfig) -> str:
+    # A shared certificate cannot be pinned to one address, so ccd stays off in that mode.
+    if not config.uses_client_config_dir:
+        return ""
+    return f"client-config-dir {config.ccd_dir}"
 
 
 def _tls_crypt_block(config: AddonConfig) -> str:

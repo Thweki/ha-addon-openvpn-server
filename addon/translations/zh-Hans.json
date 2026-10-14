@@ -1,4 +1,114 @@
 {
   "name": "OpenVPN 服务端",
-  "description": "运行于 Home Assistant OS 的 OpenVPN 服务端插件"
+  "description": "运行于 Home Assistant OS 的 OpenVPN 服务端插件",
+  "configuration": {
+    "public_endpoint": {
+      "name": "公网地址或域名",
+      "description": "你的设备连接使用的地址，例如 vpn.example.com。会写入导出的客户端配置。"
+    },
+    "listen_port": {
+      "name": "本地监听端口",
+      "description": "OpenVPN 在本机实际监听的端口，通常是 1194。"
+    },
+    "public_port": {
+      "name": "客户端连接端口",
+      "description": "写入客户端配置的端口。如果路由器把外网 9999 转发到本机 1194，这里填 9999。"
+    },
+    "protocol": {
+      "name": "传输协议",
+      "description": "UDP 更快，推荐默认使用。只有网络封锁 UDP 时才选 TCP。"
+    },
+    "lan_networks": {
+      "name": "家庭内网网段",
+      "description": "客户端需要访问的内网段，多个用逗号分隔，例如 192.168.1.0/24。"
+    },
+    "nat_enabled": {
+      "name": "启用内网访问转发（NAT）",
+      "description": "客户端要访问内网设备必须开启。关闭后客户端只能访问 VPN 服务端本身。"
+    },
+    "redirect_gateway": {
+      "name": "让客户端全部流量走 VPN",
+      "description": "开启后客户端的互联网流量也会经过此 VPN。"
+    },
+    "vpn_subnet": {
+      "name": "VPN 网段",
+      "description": "分配给 VPN 客户端的私有网段。与内网不冲突时保持默认即可。"
+    },
+    "vpn_netmask": {
+      "name": "VPN 掩码",
+      "description": "VPN 网段的掩码，例如 255.255.255.0。"
+    },
+    "dns": {
+      "name": "推送给客户端的 DNS",
+      "description": "下发给 VPN 客户端的 DNS，多个用逗号分隔，例如 223.5.5.5, 119.29.29.29。"
+    },
+    "device": {
+      "name": "TUN 设备名",
+      "description": "保持 'tun' 即可，只有桥接场景才需要修改。"
+    },
+    "cipher": {
+      "name": "数据加密算法",
+      "description": "数据通道的首选算法。现代默认是 AES-256-GCM。"
+    },
+    "auth": {
+      "name": "认证摘要",
+      "description": "控制通道的 HMAC 摘要，推荐 SHA256。"
+    },
+    "tls_crypt": {
+      "name": "启用 tls-crypt",
+      "description": "加密并认证控制通道，同时让端口扫描器看不出这是 VPN。建议保持开启。"
+    },
+    "client_to_client": {
+      "name": "允许客户端之间互通",
+      "description": "家庭场景通常保持关闭。"
+    },
+    "duplicate_cn": {
+      "name": "多设备共用一份证书",
+      "description": "关闭（推荐）：每台设备一份证书，并且每个客户端固定一个 VPN 地址。开启：多设备可共用同一份配置，但吊销该证书会同时登出所有设备，且固定地址功能失效。"
+    },
+    "fixed_client_ips": {
+      "name": "分配固定 VPN 地址",
+      "description": "给每个客户端一个稳定的 VPN 地址，方便设置路由器与防火墙规则。仅在证书不共用时生效。"
+    },
+    "publish_profiles_to_share": {
+      "name": "同时把客户端配置复制到 /share",
+      "description": "默认关闭。导出的 .ovpn 内含客户端私钥，而 /share 可被其它插件读取；建议改为从插件面板下载。"
+    },
+    "crl_valid_days": {
+      "name": "吊销列表有效期（天）",
+      "description": "证书吊销列表的有效时长。它只在插件启动时重建，请保证该值明显长于你的常规在线时长。"
+    },
+    "server_host": {
+      "name": "本地绑定地址",
+      "description": "OpenVPN 在容器内的监听地址。除非有特殊需要，保持 0.0.0.0。"
+    },
+    "extra_routes": {
+      "name": "额外推送路由",
+      "description": "额外推送给客户端的网段，多个用逗号分隔，例如 10.0.0.0/24。"
+    },
+    "inactive_timeout": {
+      "name": "空闲多久断开（秒）",
+      "description": "0 表示不主动断开空闲客户端。"
+    },
+    "keepalive": {
+      "name": "Keepalive 参数",
+      "description": "两个值，例如 '10 120'。"
+    },
+    "log_level": {
+      "name": "日志等级",
+      "description": "等级越高，插件日志越详细。"
+    },
+    "status_interval": {
+      "name": "状态刷新间隔（秒）",
+      "description": "在线客户端列表的写入频率。"
+    },
+    "client_name": {
+      "name": "默认客户端名称",
+      "description": "启动时自动创建并重新导出的那份证书。"
+    },
+    "client_expire_days": {
+      "name": "客户端证书有效期（天）",
+      "description": "新签发客户端证书的有效天数。"
+    }
+  }
 }

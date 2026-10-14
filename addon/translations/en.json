@@ -1,4 +1,114 @@
 {
   "name": "OpenVPN Server",
-  "description": "OpenVPN server add-on for Home Assistant OS"
+  "description": "OpenVPN server add-on for Home Assistant OS",
+  "configuration": {
+    "public_endpoint": {
+      "name": "Public address or domain",
+      "description": "The address your devices connect to, for example vpn.example.com. Written into exported client profiles."
+    },
+    "listen_port": {
+      "name": "Local listening port",
+      "description": "The port OpenVPN binds on this host. Usually 1194."
+    },
+    "public_port": {
+      "name": "Client connection port",
+      "description": "The port written into client profiles. If your router forwards external 9999 to local 1194, put 9999 here."
+    },
+    "protocol": {
+      "name": "Transport protocol",
+      "description": "UDP is faster and is the recommended default. Choose TCP only if your network blocks UDP."
+    },
+    "lan_networks": {
+      "name": "Home LAN networks",
+      "description": "Subnets VPN clients should reach, comma separated, for example 192.168.1.0/24."
+    },
+    "nat_enabled": {
+      "name": "Enable LAN forwarding (NAT)",
+      "description": "Required for clients to reach devices on your LAN. With this off, clients can only reach the VPN server itself."
+    },
+    "redirect_gateway": {
+      "name": "Route all client traffic through the VPN",
+      "description": "When on, client internet traffic also goes through this VPN."
+    },
+    "vpn_subnet": {
+      "name": "VPN network",
+      "description": "Private address range handed to VPN clients. Keep the default unless it clashes with your LAN."
+    },
+    "vpn_netmask": {
+      "name": "VPN netmask",
+      "description": "Netmask for the VPN network, for example 255.255.255.0."
+    },
+    "dns": {
+      "name": "DNS pushed to clients",
+      "description": "Comma separated DNS servers sent to VPN clients, for example 223.5.5.5, 119.29.29.29."
+    },
+    "device": {
+      "name": "TUN device",
+      "description": "Keep 'tun'. Only change it for bridged setups."
+    },
+    "cipher": {
+      "name": "Data cipher",
+      "description": "Preferred data channel cipher. AES-256-GCM is the modern default."
+    },
+    "auth": {
+      "name": "Auth digest",
+      "description": "HMAC digest for the control channel. SHA256 is recommended."
+    },
+    "tls_crypt": {
+      "name": "Use tls-crypt",
+      "description": "Encrypts and authenticates the control channel and hides the VPN from port scanners. Keep it on."
+    },
+    "client_to_client": {
+      "name": "Allow clients to reach each other",
+      "description": "Usually off for home use."
+    },
+    "duplicate_cn": {
+      "name": "Share one certificate between devices",
+      "description": "Off (recommended): one certificate per device, and each client gets a fixed VPN address. On: devices can share a single profile, but revoking that certificate logs out all of them and fixed addresses are disabled."
+    },
+    "fixed_client_ips": {
+      "name": "Assign fixed VPN addresses",
+      "description": "Gives every client a stable VPN address, which makes router and firewall rules predictable. Only applies when certificates are not shared."
+    },
+    "publish_profiles_to_share": {
+      "name": "Also copy client profiles to /share",
+      "description": "Off by default. The exported .ovpn contains the client private key and /share is readable by other add-ons; download profiles from the add-on panel instead."
+    },
+    "crl_valid_days": {
+      "name": "Revocation list validity (days)",
+      "description": "How long the certificate revocation list stays valid. It is rebuilt at add-on startup, so keep this comfortably longer than your typical uptime."
+    },
+    "server_host": {
+      "name": "Local bind address",
+      "description": "Address OpenVPN listens on inside the container. 0.0.0.0 is correct unless you have a specific reason."
+    },
+    "extra_routes": {
+      "name": "Extra pushed routes",
+      "description": "Additional subnets pushed to clients, comma separated, for example 10.0.0.0/24."
+    },
+    "inactive_timeout": {
+      "name": "Disconnect idle clients after (seconds)",
+      "description": "0 keeps idle clients connected."
+    },
+    "keepalive": {
+      "name": "Keepalive ping/restart",
+      "description": "Two values, for example '10 120'."
+    },
+    "log_level": {
+      "name": "Log level",
+      "description": "Higher levels log more detail into the add-on log."
+    },
+    "status_interval": {
+      "name": "Status refresh interval (seconds)",
+      "description": "How often the online client list is written."
+    },
+    "client_name": {
+      "name": "Default client name",
+      "description": "Certificate created and re-exported automatically at startup."
+    },
+    "client_expire_days": {
+      "name": "Client certificate validity (days)",
+      "description": "How long newly issued client certificates stay valid."
+    }
+  }
 }
