@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import ipaddress
 import json
 import threading
 import urllib.parse
@@ -8,8 +9,8 @@ from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from typing import Any, Callable
 
+from . import network
 from .config import AddonConfig
-from .network import _host_ipv4_addresses  # noqa: PLC2701 - shared interface discovery
 from .status import collect_status
 
 
@@ -49,22 +50,50 @@ class PanelServer:
         self._httpd.server_close()
 
 
-def panel_bind_addresses() -> list[str]:
-    """Bind the Supervisor bridge and loopback so the panel is not reachable from the LAN.
+def panel_bind_addresses(config: AddonConfig) -> list[str]:
+    """Bind every internal address so Home Assistant ingress can reach the panel.
 
-    Home Assistant ingress proxies to the add-on address, which for a host-network add-on is the
-    bridge; loopback covers setups where the proxy connects locally instead.
+    The local network is deliberately excluded: this port issues certificates and serves client
+    private keys, so it must not be reachable from the LAN.
     """
-    addresses: list[str] = []
-    bridge: str | None = None
-    for name, address in _host_ipv4_addresses():
-        if name in {"hassio", "docker0"} or str(address.ip).startswith("172.30.32."):
-            bridge = str(address.ip)
-            break
-    if bridge is None:
-        # Bridge not found: fall back to all interfaces and warn, otherwise the panel is unreachable.
-        return ["0.0.0.0"]
-    return [bridge, "127.0.0.1"]
+    interfaces = network._host_ipv4_addresses()
+    if not interfaces:
+        return _lan_exposed_fallback()
+
+    try:
+        lan_interface = network._default_interface()
+    except RuntimeError:
+        lan_interface = ""
+
+    lan_networks = _configured_networks(config)
+    candidates: list[str] = []
+    for name, address in interfaces:
+        ip = str(address.ip)
+        if name == "lo" or name == lan_interface:
+            continue
+        if ip.startswith("169.254."):
+            continue
+        if any(address.ip in subnet for subnet in lan_networks):
+            continue
+        candidates.append(ip)
+
+    if not candidates:
+        return _lan_exposed_fallback()
+    return list(dict.fromkeys([*candidates, "127.0.0.1"]))
+
+
+def _configured_networks(config: AddonConfig) -> list[ipaddress.IPv4Network]:
+    networks: list[ipaddress.IPv4Network] = []
+    for item in config.local_networks:
+        try:
+            networks.append(ipaddress.IPv4Network(item, strict=False))
+        except ValueError:
+            continue
+    return networks
+
+
+def _lan_exposed_fallback() -> list[str]:
+    return ["0.0.0.0"]
 
 
 def _build_handler(config: AddonConfig, actions: PanelActions) -> type[BaseHTTPRequestHandler]:

@@ -95,6 +95,12 @@ class RealTemplateTests(unittest.TestCase):
         self.assertIn("remote vpn.example.com 1194", output)
         self.assertNotIn("\ncipher ", output)
 
+    def test_explicit_exit_notify_only_for_udp(self):
+        self.config.protocol = "udp"
+        self.assertIn("explicit-exit-notify 1", renderer.render_server_config(self.config))
+        self.config.protocol = "tcp"
+        self.assertNotIn("explicit-exit-notify 1", renderer.render_server_config(self.config))
+
 
 if __name__ == "__main__":
     unittest.main()

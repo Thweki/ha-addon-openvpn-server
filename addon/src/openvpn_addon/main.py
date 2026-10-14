@@ -379,7 +379,7 @@ def start_panel(
     )
 
     servers: list[PanelServer] = []
-    for address in panel_bind_addresses():
+    for address in panel_bind_addresses(config):
         try:
             server = PanelServer(config, actions, address, PANEL_PORT)
         except OSError as error:

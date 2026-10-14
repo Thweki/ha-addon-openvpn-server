@@ -28,4 +28,4 @@ ${push_routes}
 ${client_config_dir_line}
 status ${status_path} ${status_interval}
 verb ${verb}
-explicit-exit-notify 1
+${explicit_exit_notify}

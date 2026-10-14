@@ -136,5 +136,60 @@ class PanelTests(unittest.TestCase):
         self.assertEqual(404, status)
 
 
+class PanelBindingTests(unittest.TestCase):
+    """The panel must be reachable from Home Assistant but never from the LAN."""
+
+    def setUp(self):
+        import ipaddress
+
+        from openvpn_addon import network, webui
+
+        self.ipaddress = ipaddress
+        self.network = network
+        self.webui = webui
+        self.original = (network._host_ipv4_addresses, network._default_interface)
+        self.addCleanup(self._restore)
+
+    def _restore(self):
+        self.network._host_ipv4_addresses, self.network._default_interface = self.original
+
+    def _interfaces(self, pairs):
+        self.network._host_ipv4_addresses = lambda: [
+            (name, self.ipaddress.IPv4Interface(value)) for name, value in pairs
+        ]
+
+    def _default(self, name):
+        self.network._default_interface = lambda: name
+
+    def test_binds_internal_addresses_and_skips_the_lan(self):
+        self._interfaces(
+            [
+                ("lo", "127.0.0.1/8"),
+                ("enp1s0", "192.168.1.6/24"),
+                ("hassio", "172.30.32.1/23"),
+                ("docker0", "172.30.232.1/24"),
+                ("dummy0", "169.254.10.1/16"),
+            ]
+        )
+        self._default("enp1s0")
+        config = AddonConfig(local_networks=["192.168.1.0/24"])
+        self.assertEqual(
+            ["172.30.32.1", "172.30.232.1", "127.0.0.1"],
+            self.webui.panel_bind_addresses(config),
+        )
+
+    def test_skips_addresses_inside_configured_lan_networks(self):
+        self._interfaces([("enp1s0", "10.10.0.5/24"), ("br0", "10.20.0.1/24")])
+        self._default("enp1s0")
+        config = AddonConfig(local_networks=["10.10.0.0/24"])
+        self.assertEqual(["10.20.0.1", "127.0.0.1"], self.webui.panel_bind_addresses(config))
+
+    def test_falls_back_to_all_interfaces_with_a_warning_path(self):
+        self._interfaces([("lo", "127.0.0.1/8"), ("enp1s0", "192.168.1.6/24")])
+        self._default("enp1s0")
+        config = AddonConfig(local_networks=["192.168.1.0/24"])
+        self.assertEqual(["0.0.0.0"], self.webui.panel_bind_addresses(config))
+
+
 if __name__ == "__main__":
     unittest.main()

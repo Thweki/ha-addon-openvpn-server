@@ -42,6 +42,7 @@ def render_server_config(config: AddonConfig) -> str:
         inactive_timeout=_inactive_timeout(config.inactive_timeout),
         status_interval=config.status_interval,
         verb=_verb_level(config.log_level),
+        explicit_exit_notify=_explicit_exit_notify(config),
     )
 
 
@@ -124,6 +125,11 @@ def _inactive_timeout(seconds: int) -> str:
     if seconds <= 0:
         return ""
     return f"inactive {seconds}"
+
+
+def _explicit_exit_notify(config: AddonConfig) -> str:
+    # OpenVPN ignores this for TCP and logs a notice about it.
+    return "explicit-exit-notify 1" if config.protocol == "udp" else ""
 
 
 def _redirect_gateway(enabled: bool) -> str:
