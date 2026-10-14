@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.2.2
+
+### Changed
+
+- The add-on is now published as a pre-built multi-architecture image
+  (`ghcr.io/thweki/ha-addon-openvpn-server`) built by GitHub Actions, which is the publishing method
+  Home Assistant recommends. Installing and updating no longer builds the image on your Home
+  Assistant host, so updates take seconds instead of minutes.
+- The base image is now declared with an explicit `FROM ghcr.io/home-assistant/base:3.22` in the
+  `Dockerfile`, because the Supervisor no longer provides `BUILD_FROM`. `build.yaml` is gone; the
+  `builder` workflow and current Supervisor both ignore it.
+- `map` uses the current `app_config` name instead of `addon_config`.
+
 ## 0.2.1
 
 - Bind the panel to every internal address instead of a single detected bridge address, so Home

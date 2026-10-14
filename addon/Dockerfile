@@ -1,5 +1,7 @@
-ARG BUILD_FROM
-FROM ${BUILD_FROM}
+# Pinned multi-arch base image, built by .github/workflows/builder.yaml on GitHub Actions and,
+# as a fallback, locally by the Supervisor on the Home Assistant host.
+# Supervisor no longer provides BUILD_FROM by default, so the base has to be named here.
+FROM ghcr.io/home-assistant/base:3.22
 
 # Home Assistant OS hosts in mainland China cannot reach dl-cdn.alpinelinux.org (Fastly).
 # Point apk at a domestic mirror before installing packages. Delete this line (or change the
