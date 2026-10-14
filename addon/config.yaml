@@ -9,7 +9,6 @@ arch:
 init: false
 startup: services
 boot: auto
-watchdog: true
 host_network: true
 privileged:
   - NET_ADMIN
