@@ -30,6 +30,7 @@ options:
   listen_port: 1194
   public_port: 1194
   protocol: "udp"
+  client_explicit_exit_notify: false
   lan_networks: ""
   nat_enabled: true
   redirect_gateway: false
@@ -58,6 +59,7 @@ schema:
   listen_port: port
   public_port: port
   protocol: list(udp|tcp)
+  client_explicit_exit_notify: bool
   lan_networks: str?
   nat_enabled: bool
   redirect_gateway: bool

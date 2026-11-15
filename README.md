@@ -137,6 +137,22 @@ Client profiles embed the client private key and are written with mode `0600`. D
 
 Setting `publish_profiles_to_share: true` also copies them to `/share/openvpn_server/clients/`. That path is readable by other add-ons, so leave it off unless you need it.
 
+### Clean client disconnect notifications
+
+Set `client_explicit_exit_notify: true` in the add-on options to include
+`explicit-exit-notify 1` in exported UDP client profiles. It defaults to `false`.
+On a clean disconnect or restart, supporting clients notify the server so it can
+release the session without waiting for a timeout. TCP profiles omit the directive,
+even when the option is enabled. Server shutdown notifications are unchanged.
+
+After changing the option, restart the add-on, download fresh `.ovpn` profiles from
+the panel and re-import them on each device. Existing imported profiles do not update
+automatically. To disable it, set the option to `false` and repeat those steps.
+This is best effort: crashes, power loss or a lost network connection still rely on
+the existing keepalive timeout. The panel reflects disconnects on its normal status
+refresh cycle. See the [OpenVPN manual](https://build.openvpn.net/man/openvpn-2.6/openvpn.8.html)
+for client support and directive behavior.
+
 ## Request Files (optional, scriptable)
 
 Write a file into `/share/openvpn_server/requests/` and it is applied while the add-on runs — no restart, no dropped sessions:

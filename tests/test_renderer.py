@@ -101,6 +101,32 @@ class RealTemplateTests(unittest.TestCase):
         self.config.protocol = "tcp"
         self.assertNotIn("explicit-exit-notify 1", renderer.render_server_config(self.config))
 
+    def test_client_exit_notification_is_absent_by_default(self):
+        output = renderer.render_client_config(self.config, "demo")
+        self.assertNotIn("explicit-exit-notify", output)
+
+    def test_client_exit_notification_requires_opt_in_and_udp(self):
+        for protocol in ("udp", "tcp"):
+            for enabled in (False, True):
+                with self.subTest(protocol=protocol, enabled=enabled):
+                    self.config.protocol = protocol
+                    self.config.client_explicit_exit_notify = enabled
+                    output = renderer.render_client_config(self.config, "demo")
+                    directives = [line for line in output.splitlines() if line.startswith("explicit-exit-notify")]
+                    expected = ["explicit-exit-notify 1"] if enabled and protocol == "udp" else []
+                    self.assertEqual(expected, directives)
+                    self.assertIn(f"proto {protocol}", output)
+                    self.assertNotIn("${", output)
+
+    def test_client_exit_notification_does_not_change_server_config(self):
+        for protocol in ("udp", "tcp"):
+            with self.subTest(protocol=protocol):
+                self.config.protocol = protocol
+                self.config.client_explicit_exit_notify = False
+                original = renderer.render_server_config(self.config)
+                self.config.client_explicit_exit_notify = True
+                self.assertEqual(original, renderer.render_server_config(self.config))
+
 
 if __name__ == "__main__":
     unittest.main()
