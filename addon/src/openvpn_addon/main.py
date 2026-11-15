@@ -13,6 +13,7 @@ from pathlib import Path
 from typing import Any, Callable
 
 from .config import DATA_ROOT, AddonConfig, load_config
+from .dns import collect_dns
 from .health import collect_health, worst_status
 from .network import apply_network, ip_forward_enabled, remove_network
 from .pki import PkiManager
@@ -42,6 +43,9 @@ def build_parser() -> argparse.ArgumentParser:
     _command(subparsers, "init", cmd_init)
     _command(subparsers, "run", cmd_run)
     _command(subparsers, "status", cmd_status)
+
+    dns = subparsers.add_parser("dns", help="Inspect DNS pushes on disk without reading keys or profiles")
+    dns.set_defaults(func=cmd_dns)
 
     client = subparsers.add_parser("client", help="Manage OpenVPN client certificates and exports")
     client_sub = client.add_subparsers(dest="client_command", required=True)
@@ -143,6 +147,12 @@ def cmd_run(_: argparse.Namespace) -> int:
 def cmd_status(_: argparse.Namespace) -> int:
     config = load_and_validate()
     print(status_json(config))
+    return 0
+
+
+def cmd_dns(_: argparse.Namespace) -> int:
+    # Paths alone are needed: inspection must work even with invalid options.
+    print(json.dumps(collect_dns(AddonConfig()), ensure_ascii=False, indent=2))
     return 0
 
 
