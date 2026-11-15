@@ -35,6 +35,52 @@ The add-on keeps running and retrying with backoff so the panel stays reachable,
 
 The panel's **Download diagnostics** produces a text bundle with the status payload, runtime details and the rendered `server.conf`. Attach it to bug reports; it does not contain private keys.
 
+## Experimental client profile preflight
+
+Check a saved `.ovpn` export before distributing it, or diagnose a stale copy
+after changing the endpoint, certificates, or TLS-crypt key. Inside the add-on
+container:
+
+```sh
+openvpn-addon client check-profile /data/openvpn/exports/laptop.ovpn --experimental-profile-check
+```
+
+The experiment defaults **OFF**. Each invocation requires
+`--experimental-profile-check`; without it, the command exits before reading
+settings or the profile. No add-on configuration changes or restart are needed.
+
+The JSON report contains six checks:
+
+- `connection_settings`: directives match the current generated profile,
+  including endpoint/port, protocol, ciphers, and server authentication.
+- `ca_match`: the embedded CA matches the current CA.
+- `key_match`: the inline private key is valid and matches the certificate
+  (supports RSA and EC).
+- `certificate`: the certificate verifies against the current CA, with valid
+  dates and TLS client purpose.
+- `revocation`: verification also succeeds with the current signed CRL;
+  revoked certificates and missing, invalid, or expired CRLs fail.
+- `tls_crypt`: the inline static key matches the current server setting.
+
+Exit codes: `0` all checks pass, `1` one or more checks fail, `2` disabled,
+unsupported/unreadable input, invalid settings, or checks could not complete.
+Check names and remediation messages are fixed; the report does not contain
+profile contents, identities, endpoints, paths, or OpenSSL error output.
+
+Only this add-on's inline export format is supported, with a 128 KiB limit and
+one unencrypted private key and certificate. Duplicate directives/blocks,
+external file references, scripts, additional directives, encrypted keys, and
+certificate bundles are rejected. The command never executes profile directives,
+contacts the VPN endpoint, writes files, or reads the CA/server private keys.
+OpenSSL receives the supplied inline client key through stdin, with a five-second
+timeout per operation. Keep the input profile private as usual.
+
+This is a snapshot check against settings and PKI on disk, not a live connection
+test or a general OpenVPN profile validator. A settings mismatch means the copy
+differs from a fresh export, even if the alternative settings could connect.
+It does not establish that OpenVPN has reloaded the current configuration/CRL,
+that routing works, or that a particular client application supports the profile.
+
 ## Files and paths
 
 - Client profiles: `/data/openvpn/exports/` (mode `0600`)
