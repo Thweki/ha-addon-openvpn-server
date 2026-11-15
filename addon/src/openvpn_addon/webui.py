@@ -4,13 +4,14 @@ import ipaddress
 import json
 import threading
 import urllib.parse
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from typing import Any, Callable
 
 from . import network
 from .config import AddonConfig
+from .history import StatusHistory
 from .status import collect_status
 
 
@@ -27,6 +28,7 @@ class PanelActions:
     refresh_crl: Callable[[], dict[str, Any]]
     restart_openvpn: Callable[[], dict[str, Any]]
     runtime_info: Callable[[], dict[str, Any]]
+    history: StatusHistory = field(default_factory=StatusHistory)
 
 
 class PanelServer:
@@ -106,7 +108,7 @@ def _build_handler(config: AddonConfig, actions: PanelActions) -> type[BaseHTTPR
                 self._send_html(PAGE)
                 return
             if path == "/api/status":
-                self._send_json(collect_status(config))
+                self._send_json(actions.history.collect(lambda: collect_status(config)))
                 return
             if path == "/api/diagnostics":
                 self._send_text(_diagnostics(config, actions))
@@ -260,6 +262,7 @@ input[type=text]{background:transparent;color:var(--fg);border:1px solid var(--b
 .badge{display:inline-block;border-radius:999px;padding:1px 8px;font-size:12px;border:1px solid currentColor}
 .ok{color:var(--ok)}.warn{color:var(--warn)}.err{color:var(--err)}.muted{color:var(--muted)}
 ul.health{list-style:none;margin:0;padding:0}ul.health li{padding:4px 0;border-bottom:1px solid var(--border);font-size:13px}
+#history{max-height:320px;overflow:auto;overflow-wrap:anywhere}
 code{background:rgba(127,127,127,.15);border-radius:4px;padding:1px 4px}
 #toast{position:fixed;left:16px;bottom:16px;background:var(--card);border:1px solid var(--border);border-radius:10px;padding:10px 14px;display:none;max-width:60ch}
 </style>
@@ -284,6 +287,12 @@ code{background:rgba(127,127,127,.15);border-radius:4px;padding:1px 4px}
       <input type="text" id="newclient" placeholder="new client name">
       <button class="primary" id="issue">Issue</button>
     </div>
+  </div>
+
+  <div class="card" style="grid-column:1/-1">
+    <h2>Recent status</h2>
+    <p class="muted">Latest 30 events since add-on startup, newest first. Client and health changes are observed on refresh (every 15 seconds while this page is visible); brief changes may be missed.</p>
+    <ul class="health" id="history"><li class="muted">No recent events.</li></ul>
   </div>
 
   <div class="card" style="grid-column:1/-1">
@@ -320,8 +329,37 @@ function badge(status){
   const cls = status === "ok" ? "ok" : status === "warn" ? "warn" : "err";
   return `<span class="badge ${cls}">${status}</span>`;
 }
+function renderHistory(events){
+  const rows = events.map((event) => {
+    const row = document.createElement("li");
+    const stamp = document.createElement("time");
+    stamp.dateTime = event.at;
+    stamp.textContent = new Date(event.at).toLocaleString();
+    row.append(stamp, document.createTextNode(` — ${event.message}`));
+    if (event.kind === "error") row.className = "err";
+    return row;
+  });
+  if (!rows.length){
+    const empty = document.createElement("li");
+    empty.textContent = "No recent events.";
+    empty.className = "muted";
+    rows.push(empty);
+  }
+  $("history").replaceChildren(...rows);
+}
+let loading = false;
 async function load(){
+  if (loading) return;
+  loading = true;
+  try {
+    await loadStatus();
+  } finally {
+    loading = false;
+  }
+}
+async function loadStatus(){
   const status = await api("api/status");
+  renderHistory(status.recent_status || []);
   const s = status.summary;
   const worst = status.health.status;
   $("summary").innerHTML =
@@ -375,6 +413,9 @@ document.addEventListener("click", async (event) => {
   }
 });
 load().catch((error) => toast(String(error.message || error), true));
+setInterval(() => {
+  if (!document.hidden) load().catch((error) => toast(String(error.message || error), true));
+}, 15000);
 </script>
 </body>
 </html>
