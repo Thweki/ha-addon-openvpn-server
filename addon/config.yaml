@@ -29,6 +29,9 @@ options:
   public_endpoint: ""
   listen_port: 1194
   public_port: 1194
+  experimental_client_failover: false
+  client_fallback_endpoints: []
+  client_connect_timeout: 30
   protocol: "udp"
   lan_networks: ""
   nat_enabled: true
@@ -57,6 +60,10 @@ schema:
   public_endpoint: str?
   listen_port: port
   public_port: port
+  experimental_client_failover: bool
+  client_fallback_endpoints:
+    - str
+  client_connect_timeout: int(1,300)
   protocol: list(udp|tcp)
   lan_networks: str?
   nat_enabled: bool

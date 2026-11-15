@@ -5,6 +5,43 @@ Full repository documentation:
 - [README.md](https://github.com/Thweki/ha-addon-openvpn-server/blob/main/README.md)
 - [README.zh-CN.md](https://github.com/Thweki/ha-addon-openvpn-server/blob/main/README.zh-CN.md)
 
+## Experimental client endpoint failover
+
+For homes with multiple WAN addresses or port forwards, exported profiles can try
+alternate addresses for the same VPN server. This feature is **OFF by default**.
+In the add-on options, for example:
+
+```yaml
+public_endpoint: "vpn.example.com"
+public_port: 1194
+experimental_client_failover: true
+client_fallback_endpoints:
+  - "backup.example.com"
+  - "192.0.2.10:443"
+client_connect_timeout: 30
+```
+
+Replace the example addresses with your own. Save and restart the add-on, then
+download/export each client profile again and re-import it on the device. Already
+installed profiles are not updated automatically.
+
+The primary `public_endpoint` is tried first (or a concrete `server_host` when
+empty), followed by the listed backups. Supply 1–8 DNS names or IPv4 addresses;
+an omitted port uses `public_port`, even if the primary address specifies its own
+port. Duplicate host/port pairs are omitted without changing order. IPv6 literals,
+URLs, and per-endpoint protocol overrides are not supported.
+
+All addresses must reach this same server using the configured `protocol` and
+existing credentials. This does not create another listener or port forward.
+The generated profile uses OpenVPN's
+[multiple `remote` directives and `server-poll-timeout`](https://openvpn.net/community-docs/community-articles/openvpn-2-6-manual/)
+to try another address after a connection attempt fails. The timeout is 1–300
+seconds (default 30); DNS resolution and client app behavior can affect timing.
+Established-session failure detection still uses the existing keepalive behavior.
+
+Set `experimental_client_failover: false`, then re-export and re-import profiles
+to return devices to a single address. Disabled settings are ignored by the add-on.
+
 ## Troubleshooting
 
 Start with **Open Web UI -> Health**. Every check below is reported there together with the reason.

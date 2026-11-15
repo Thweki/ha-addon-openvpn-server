@@ -14,6 +14,18 @@
       "name": "客户端连接端口",
       "description": "写入客户端配置的端口。如果路由器把外网 9999 转发到本机 1194，这里填 9999。"
     },
+    "experimental_client_failover": {
+      "name": "实验性客户端备用地址",
+      "description": "默认关闭。为导出的客户端配置添加同一 VPN 服务端的备用地址。修改后需要重新导出并在客户端重新导入配置。"
+    },
+    "client_fallback_endpoints": {
+      "name": "客户端备用地址列表",
+      "description": "按顺序填写 1 到 8 个域名或 IPv4 地址，可附加 :端口；未指定时使用客户端连接端口。所有地址必须通过所选协议连接到此服务端。备用地址功能关闭时忽略此项。"
+    },
+    "client_connect_timeout": {
+      "name": "客户端连接尝试超时（秒）",
+      "description": "仅用于实验性备用地址功能：等待服务端响应 1 到 300 秒后尝试下一个地址，默认 30 秒。不影响已建立连接的 Keepalive 参数。"
+    },
     "protocol": {
       "name": "传输协议",
       "description": "UDP 更快，推荐默认使用。只有网络封锁 UDP 时才选 TCP。"
