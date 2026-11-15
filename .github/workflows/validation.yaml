@@ -1,0 +1,57 @@
+name: Validate
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: Tests and shell syntax
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Run unit tests
+        env:
+          PYTHONPATH: addon/src
+        run: python3 -m unittest discover -s tests -v
+
+      - name: Check shell syntax
+        run: |
+          bash -n addon/rootfs/usr/local/bin/openvpn-addon
+          bash -n addon/rootfs/etc/services.d/openvpn/run
+
+  container:
+    name: Container build and smoke check
+    needs: test
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Build local image
+        run: docker build --tag openvpn-addon:ci ./addon
+
+      # Exercise the packaged CLI without starting s6, the VPN, or the panel.
+      - name: Smoke check local image
+        run: |
+          docker run --rm --network none --entrypoint /bin/bash openvpn-addon:ci -euc '
+            openvpn --version
+            openssl version
+            test -x /usr/share/easy-rsa/easyrsa
+            test -x /etc/services.d/openvpn/run
+            test -s /opt/openvpn_server/templates/server.conf.tpl
+            test -s /opt/openvpn_server/templates/client.ovpn.tpl
+            openvpn-addon --help
+          '
