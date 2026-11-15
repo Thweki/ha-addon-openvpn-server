@@ -62,6 +62,12 @@ def build_parser() -> argparse.ArgumentParser:
     export.add_argument("name")
     export.set_defaults(func=cmd_client_export)
 
+    check = client_sub.add_parser("check-profile", help="Preflight an exported profile against current settings and PKI")
+    check.add_argument("profile", type=Path)
+    check.add_argument("--experimental-profile-check", action="store_true", default=False,
+                       help="Enable the experimental, offline profile check for this invocation")
+    check.set_defaults(func=cmd_client_check_profile)
+
     list_parser = client_sub.add_parser("list", help="List issued client certificates")
     list_parser.set_defaults(func=cmd_client_list)
     return parser
@@ -192,6 +198,24 @@ def cmd_client_list(_: argparse.Namespace) -> int:
     for client in clients:
         print(f"{client.name}\t{client.status}\texpires={client.expires or 'unknown'}", flush=True)
     return 0
+
+
+def cmd_client_check_profile(args: argparse.Namespace) -> int:
+    from .profile_check import check_profile, error_report
+
+    if not args.experimental_profile_check:
+        report = error_report("disabled", "Enable this experiment with --experimental-profile-check.")
+        code = 2
+    else:
+        try:
+            config = load_and_validate()
+        except (OSError, ValueError, TypeError):
+            report = error_report("configuration", "Unable to load valid add-on settings.")
+            code = 2
+        else:
+            report, code = check_profile(config, args.profile)
+    print(json.dumps(report, sort_keys=True))
+    return code
 
 
 @dataclass(slots=True)
