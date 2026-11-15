@@ -15,12 +15,13 @@ def collect_status(config: AddonConfig, pki: PkiManager | None = None) -> dict[s
     manager = pki or PkiManager(config)
     online = _parse_status(config.status_path)
     fixed_ips = _load_fixed_ips(config)
-    checks = collect_health(config, manager)
+    certificates = manager.list_clients()
+    checks = collect_health(config, manager, clients=certificates)
     networks = effective_push_networks(config.push_routes, config.local_networks)
     crl = manager.crl_info()
 
     clients: list[dict[str, object]] = []
-    for client in manager.list_clients():
+    for client in certificates:
         session = online.get(client.name, {})
         clients.append(
             {

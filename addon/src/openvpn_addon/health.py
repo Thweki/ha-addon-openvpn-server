@@ -1,10 +1,13 @@
 from __future__ import annotations
 
+import math
+import ssl
 from dataclasses import dataclass
+from datetime import datetime, timezone
 
 from .config import AddonConfig
 from .network import NetworkResult, verify_network
-from .pki import PkiManager
+from .pki import ClientInfo, PkiManager, STATUS_VALID
 from .validator import config_warnings
 
 
@@ -14,6 +17,7 @@ ERROR = "error"
 
 _ORDER = {ERROR: 0, WARN: 1, OK: 2}
 CRL_WARN_DAYS = 90
+CLIENT_EXPIRY_WARN_DAYS = 30
 
 
 @dataclass(slots=True)
@@ -23,7 +27,12 @@ class Check:
     detail: str
 
 
-def collect_health(config: AddonConfig, pki: PkiManager | None = None) -> list[Check]:
+def collect_health(
+    config: AddonConfig,
+    pki: PkiManager | None = None,
+    *,
+    clients: list[ClientInfo] | None = None,
+) -> list[Check]:
     checks: list[Check] = []
 
     network = verify_network(config)
@@ -31,6 +40,7 @@ def collect_health(config: AddonConfig, pki: PkiManager | None = None) -> list[C
 
     manager = pki or PkiManager(config)
     checks.append(_crl_check(config, manager))
+    checks.extend(_client_expiry_checks(manager.list_clients() if clients is None else clients))
 
     if config.public_endpoint.strip():
         checks.append(Check("public_endpoint", OK, f"clients connect to {config.public_address}:{config.public_port}"))
@@ -68,6 +78,32 @@ def collect_health(config: AddonConfig, pki: PkiManager | None = None) -> list[C
     for warning in config_warnings(config):
         checks.append(Check("configuration", WARN, warning))
 
+    return checks
+
+
+def _client_expiry_checks(clients: list[ClientInfo]) -> list[Check]:
+    checks: list[Check] = []
+    now = datetime.now(timezone.utc).timestamp()
+    guidance = "Issue a replacement under a new name, install its profile, then revoke the old client."
+    for client in clients:
+        if client.status != STATUS_VALID:
+            continue
+        try:
+            remaining = ssl.cert_time_to_seconds(client.expires or "") - now
+        except (ValueError, OverflowError):
+            checks.append(Check(
+                "client_expiry", WARN,
+                f"{client.name}: certificate expiry is unknown; inspect the client certificate.",
+            ))
+            continue
+        if remaining <= 0:
+            checks.append(Check("client_expiry", ERROR, f"{client.name}: certificate has expired. {guidance}"))
+        elif remaining <= CLIENT_EXPIRY_WARN_DAYS * 86400:
+            days = math.ceil(remaining / 86400)
+            checks.append(Check(
+                "client_expiry", WARN,
+                f"{client.name}: certificate expires in {days} day(s). {guidance}",
+            ))
     return checks
 
 
