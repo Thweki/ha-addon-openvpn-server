@@ -199,10 +199,15 @@ class PkiManager:
             if stale.name not in assignments:
                 stale.unlink()
         for name, address in assignments.items():
-            (self.config.ccd_dir / name).write_text(
-                f"ifconfig-push {address} {self.config.vpn_netmask}\n",
-                encoding="utf-8",
-            )
+            path = self.config.ccd_dir / name
+            content = f"ifconfig-push {address} {self.config.vpn_netmask}\n"
+            # Most syncs retain existing addresses; avoid rewriting every client's file.
+            try:
+                if path.read_bytes() == content.encode("utf-8"):
+                    continue
+            except OSError:
+                pass  # Missing or unreadable files still get the usual write attempt.
+            path.write_text(content, encoding="utf-8")
         return assignments
 
     def _clear_ccd(self) -> None:
