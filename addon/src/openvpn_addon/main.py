@@ -12,6 +12,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Callable
 
+from .backup import backup_config
 from .config import DATA_ROOT, AddonConfig, load_config
 from .health import collect_health, worst_status
 from .network import apply_network, ip_forward_enabled, remove_network
@@ -42,6 +43,10 @@ def build_parser() -> argparse.ArgumentParser:
     _command(subparsers, "init", cmd_init)
     _command(subparsers, "run", cmd_run)
     _command(subparsers, "status", cmd_status)
+
+    backup = subparsers.add_parser("backup-config", help="Back up effective settings without PKI or private keys")
+    backup.add_argument("--output", type=Path, required=True, help="New JSON file in an existing directory")
+    backup.set_defaults(func=cmd_backup_config)
 
     client = subparsers.add_parser("client", help="Manage OpenVPN client certificates and exports")
     client_sub = client.add_subparsers(dest="client_command", required=True)
@@ -143,6 +148,22 @@ def cmd_run(_: argparse.Namespace) -> int:
 def cmd_status(_: argparse.Namespace) -> int:
     config = load_and_validate()
     print(status_json(config))
+    return 0
+
+
+def cmd_backup_config(args: argparse.Namespace) -> int:
+    try:
+        backup_config(load_config(), args.output)
+    except FileExistsError:
+        print("Configuration backup failed: destination already exists; choose a new file.", file=sys.stderr)
+        return 1
+    except (ValueError, TypeError, AttributeError):
+        print("Configuration backup failed: invalid add-on options.", file=sys.stderr)
+        return 1
+    except OSError:
+        print("Configuration backup failed: unable to read options or write the destination.", file=sys.stderr)
+        return 1
+    print("Configuration backup created (settings only; no PKI or private keys).", flush=True)
     return 0
 
 

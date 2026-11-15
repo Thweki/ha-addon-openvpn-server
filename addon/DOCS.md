@@ -35,6 +35,32 @@ The add-on keeps running and retrying with backoff so the panel stays reachable,
 
 The panel's **Download diagnostics** produces a text bundle with the status payload, runtime details and the rendered `server.conf`. Attach it to bug reports; it does not contain private keys.
 
+## Configuration backup
+
+From a shell inside the add-on container, save a snapshot before changing settings:
+
+```sh
+openvpn-addon backup-config --output /data/openvpn-settings.json
+```
+
+The destination directory must already exist and the file must be new. The command
+atomically creates an owner-only (`0600`) JSON file and refuses to overwrite files
+or follow destination symlinks. It prints only a success or error message, never
+option values. Failure returns a nonzero exit status and removes temporary files.
+
+The snapshot includes effective defaults and uses Home Assistant option names
+(`dns`, `lan_networks`, `extra_routes`), so it can also be loaded as an
+`options.json` file. Unknown options are omitted. To reapply settings in Home
+Assistant, use the snapshot values in the add-on Configuration editor, save, and
+restart the add-on. There is no automatic restore command. Keep the snapshot in
+private storage: it contains endpoint and network details even though it contains
+no private keys. There is no automatic copy to `/share`.
+
+This is a configuration-only backup. It excludes the CA, certificates, private
+keys, revocations, fixed client address assignments, profiles and logs. It cannot
+recover VPN identities after data loss; retain a separate full Home Assistant
+backup for that purpose.
+
 ## Files and paths
 
 - Client profiles: `/data/openvpn/exports/` (mode `0600`)
