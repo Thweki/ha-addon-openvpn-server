@@ -33,6 +33,8 @@ options:
   lan_networks: ""
   nat_enabled: true
   redirect_gateway: false
+  experimental_bandwidth_limit: false
+  download_limit_kbps: 10000
   vpn_subnet: "10.8.0.0"
   vpn_netmask: "255.255.255.0"
   dns: "1.1.1.1, 8.8.8.8"
@@ -61,6 +63,8 @@ schema:
   lan_networks: str?
   nat_enabled: bool
   redirect_gateway: bool
+  experimental_bandwidth_limit: bool
+  download_limit_kbps: int(64,1000000)
   vpn_subnet: str
   vpn_netmask: str
   dns: str

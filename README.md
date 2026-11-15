@@ -114,6 +114,9 @@ flowchart LR
   D --> E["Home LAN<br/>192.168.1.0/24"]
 ```
 
+To reserve home uplink capacity, an opt-in experimental cap can limit aggregate
+VPN client downloads. It defaults off; see [bandwidth limit configuration](addon/DOCS.md#experimental-download-bandwidth-limit).
+
 ## Client Certificates
 
 Two modes, selected by `duplicate_cn`:
