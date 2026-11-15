@@ -66,6 +66,18 @@
       "name": "多设备共用一份证书",
       "description": "关闭（推荐）：每台设备一份证书，并且每个客户端固定一个 VPN 地址。开启：多设备可共用同一份配置，但吊销该证书会同时登出所有设备，且固定地址功能失效。"
     },
+    "experimental_connection_rate_limit": {
+      "name": "实验功能：限制新连接速率",
+      "description": "默认关闭。通过 OpenVPN connect-freq 限制所有客户端的新连接总速率。突发连接可能延迟正常重连。修改后请重启插件。"
+    },
+    "connection_rate_limit": {
+      "name": "每个时间窗口的新连接数",
+      "description": "范围 1–1000，默认 10。所有客户端共享，并非每台设备单独计算。仅在启用实验性连接速率限制时生效。"
+    },
+    "connection_rate_window": {
+      "name": "连接速率时间窗口（秒）",
+      "description": "范围 1–3600 秒，默认 60。仅在启用实验性连接速率限制时生效。"
+    },
     "fixed_client_ips": {
       "name": "分配固定 VPN 地址",
       "description": "给每个客户端一个稳定的 VPN 地址，方便设置路由器与防火墙规则。仅在证书不共用时生效。"

@@ -45,6 +45,12 @@ def validate_config(config: AddonConfig) -> None:
     if config.inactive_timeout < 0:
         raise ValueError("inactive_timeout must be >= 0")
 
+    if not (1 <= config.connection_rate_limit <= 1000):
+        raise ValueError("connection_rate_limit must be between 1 and 1000")
+
+    if not (1 <= config.connection_rate_window <= 3600):
+        raise ValueError("connection_rate_window must be between 1 and 3600 seconds")
+
     if config.status_interval <= 0:
         raise ValueError("status_interval must be > 0")
 
@@ -114,6 +120,13 @@ def config_warnings(config: AddonConfig) -> list[str]:
                 "pinned to a single VPN address, so per-client IP assignment is skipped. Disable "
                 "duplicate_cn for one certificate per device."
             )
+
+    if config.experimental_connection_rate_limit:
+        warnings.append(
+            "Experimental connection rate limit is enabled: "
+            f"{config.connection_rate_limit} new connections per {config.connection_rate_window} seconds "
+            "shared by all clients; legitimate reconnects may be refused during bursts."
+        )
 
     if config.public_port != config.listen_port:
         warnings.append(

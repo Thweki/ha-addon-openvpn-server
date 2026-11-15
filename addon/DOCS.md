@@ -5,6 +5,34 @@ Full repository documentation:
 - [README.md](https://github.com/Thweki/ha-addon-openvpn-server/blob/main/README.md)
 - [README.zh-CN.md](https://github.com/Thweki/ha-addon-openvpn-server/blob/main/README.zh-CN.md)
 
+## Experimental connection rate limit
+
+To reduce the server load from bursts of new VPN connections, opt in to a
+server-wide admission rate limit in the add-on options:
+
+```yaml
+experimental_connection_rate_limit: true
+connection_rate_limit: 10
+connection_rate_window: 60
+```
+
+Restart the add-on to apply. This renders `connect-freq 10 60` for either UDP or
+TCP. The count accepts 1–1000 connections and the window accepts 1–3600 seconds.
+All clients share the budget; it does not cap simultaneous clients or disconnect
+established sessions. A burst can refuse legitimate reconnects too, so allow
+enough headroom for all your devices reconnecting after an outage. The panel's
+Health warnings show the configured rate while enabled.
+
+The flag defaults to `false`. Setting the count/window alone does not enable it.
+To remove the limit, set the flag back to `false` and restart. Client profiles do
+not need to be downloaded again.
+
+OpenVPN's [`connect-freq` documentation](https://github.com/OpenVPN/openvpn/blob/release/2.6/doc/man-sections/server-options.rst)
+describes which connection attempts count toward this limit. On OpenVPN 2.6 UDP,
+it applies after the initial three-way handshake; the separate initial-packet
+response limiter remains at OpenVPN's default. Keep `tls_crypt` enabled; this
+feature is not a complete DoS defense.
+
 ## Troubleshooting
 
 Start with **Open Web UI -> Health**. Every check below is reported there together with the reason.

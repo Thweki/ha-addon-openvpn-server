@@ -20,6 +20,7 @@ auth ${auth}
 dh none
 ${tls_crypt_line}
 ${duplicate_cn}
+${connection_rate_limit}
 ${client_to_client}
 ${inactive_timeout}
 ${redirect_gateway}
