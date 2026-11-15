@@ -1,0 +1,9 @@
+#!/usr/bin/python3
+"""OpenVPN hook: no network delivery, options, PKI reads, or dynamic config writes."""
+import sys
+
+sys.path.insert(0, "/opt/openvpn_server/src")
+
+from openvpn_addon.notifications import emit_event
+
+sys.exit(emit_event())

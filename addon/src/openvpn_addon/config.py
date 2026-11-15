@@ -42,6 +42,8 @@ class AddonConfig:
     status_interval: int = 30
     client_name: str = "homeassistant"
     client_expire_days: int = 825
+    experimental_client_notifications: bool = False
+    client_notification_url: str = ""
     # Populated by load_config(); never set through options.json in practice.
     unknown_options: list[str] = field(default_factory=list)
 
@@ -96,6 +98,10 @@ class AddonConfig:
     @property
     def management_path(self) -> Path:
         return self.runtime_dir / "management.sock"
+
+    @property
+    def notification_socket_path(self) -> Path:
+        return self.runtime_dir / "notifications.sock"
 
     @property
     def tls_crypt_path(self) -> Path:

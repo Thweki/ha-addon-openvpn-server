@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import ipaddress
 import re
+from urllib.parse import urlsplit
 
 from .config import AddonConfig
 
@@ -56,6 +57,9 @@ def validate_config(config: AddonConfig) -> None:
 
     validate_client_name(config.client_name)
 
+    if config.experimental_client_notifications:
+        _validate_notification_url(config.client_notification_url)
+
     vpn_network = ipaddress.IPv4Network(config.vpn_network, strict=False)
     for item in config.local_networks:
         local_network = ipaddress.IPv4Network(item, strict=False)
@@ -63,6 +67,26 @@ def validate_config(config: AddonConfig) -> None:
             raise ValueError(
                 f"VPN subnet {vpn_network} overlaps with local_networks entry {local_network}"
             )
+
+
+def _validate_notification_url(value: str) -> None:
+    # Never include the value in errors: webhook paths/queries can contain secrets.
+    message = "client_notification_url must be an HTTP(S) URL without credentials, whitespace or a fragment"
+    try:
+        if not isinstance(value, str) or any(char.isspace() or ord(char) < 32 or ord(char) == 127 for char in value):
+            raise ValueError(message)
+        parsed = urlsplit(value)
+        if (
+            parsed.scheme not in {"http", "https"}
+            or not parsed.hostname
+            or parsed.username is not None
+            or parsed.password is not None
+            or "#" in value
+            or (parsed.port is not None and not 1 <= parsed.port <= 65535)
+        ):
+            raise ValueError(message)
+    except (ValueError, TypeError):
+        raise ValueError(message) from None
 
 
 def validate_client_name(name: str) -> None:

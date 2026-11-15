@@ -26,6 +26,7 @@ ${redirect_gateway}
 ${push_dns}
 ${push_routes}
 ${client_config_dir_line}
+${notification_hooks}
 status ${status_path} ${status_interval}
 verb ${verb}
 ${explicit_exit_notify}

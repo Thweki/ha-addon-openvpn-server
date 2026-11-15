@@ -43,6 +43,7 @@ def render_server_config(config: AddonConfig) -> str:
         status_interval=config.status_interval,
         verb=_verb_level(config.log_level),
         explicit_exit_notify=_explicit_exit_notify(config),
+        notification_hooks=_notification_hooks(config),
     )
 
 
@@ -61,6 +62,18 @@ def render_client_config(config: AddonConfig, client_name: str) -> str:
         cert=_read_cert_body(config.pki_dir / "issued" / f"{client_name}.crt"),
         key=_read_file(config.pki_dir / "private" / f"{client_name}.key"),
     )
+
+
+def _notification_hooks(config: AddonConfig) -> str:
+    if not config.experimental_client_notifications:
+        return ""
+    path = str(config.notification_socket_path).replace("\\", "\\\\").replace('"', '\\"')
+    return "\n".join([
+        "script-security 2",
+        f'setenv OPENVPN_NOTIFY_SOCKET "{path}"',
+        "client-connect /usr/local/bin/openvpn-notify",
+        "client-disconnect /usr/local/bin/openvpn-notify",
+    ])
 
 
 def _resolve_remote(config: AddonConfig) -> tuple[str, int]:
