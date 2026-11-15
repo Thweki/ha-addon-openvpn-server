@@ -76,6 +76,12 @@ def validate_client_name(name: str) -> None:
 def config_warnings(config: AddonConfig) -> list[str]:
     warnings: list[str] = []
 
+    if config.experimental_random_port:
+        warnings.append(
+            "Experimental listen-port randomization is enabled. Each add-on start selects a local port; "
+            "update router forwarding to the port shown in the panel. Client profiles keep their public port."
+        )
+
     for option in config.unknown_options:
         warnings.append(
             f"Unknown option '{option}' is set but not used by this version; remove it from the "

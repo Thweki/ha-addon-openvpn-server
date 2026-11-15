@@ -28,6 +28,7 @@ changelog: true
 options:
   public_endpoint: ""
   listen_port: 1194
+  experimental_random_port: false
   public_port: 1194
   protocol: "udp"
   lan_networks: ""
@@ -56,6 +57,7 @@ options:
 schema:
   public_endpoint: str?
   listen_port: port
+  experimental_random_port: bool
   public_port: port
   protocol: list(udp|tcp)
   lan_networks: str?

@@ -5,6 +5,38 @@ Full repository documentation:
 - [README.md](https://github.com/Thweki/ha-addon-openvpn-server/blob/main/README.md)
 - [README.zh-CN.md](https://github.com/Thweki/ha-addon-openvpn-server/blob/main/README.zh-CN.md)
 
+## Experimental random listen port
+
+For testing router/firewall forwarding with changing local VPN ports, enable:
+
+```yaml
+experimental_random_port: true
+```
+
+Default: **off**. Each add-on start randomly probes up to 64 distinct ports in
+49152–65535 using the configured UDP/TCP protocol, then uses the first available
+port instead of `listen_port`. The panel summary and startup log show the selected
+port. It is also recorded in `/data/openvpn/runtime/server.conf`; `openvpn-addon
+status` reads that last rendered port (not proof that OpenVPN is running). Before
+the first start, status shows the configured `listen_port`.
+
+After **every add-on restart**, update your router/firewall destination to the
+selected local port. The public port in client profiles (`public_port`, or the
+explicit port in `public_endpoint`) stays unchanged, so a stable external port can
+continue to serve existing profiles. The add-on does not update your router. This
+mode is intended for deployments with port forwarding, not direct connections
+to a fixed local port. It is not a security substitute for certificate validation.
+
+Panel **Restart OpenVPN**, revocations, and child-process crash retries keep the
+same port. Only a new add-on run selects again; a random choice can repeat a
+previous port. Validation, initialization, and profile exports do not choose ports.
+The probe cannot reserve the port until OpenVPN binds it; a competing process can
+still claim it, in which case the normal OpenVPN diagnostics/retries apply. Probe
+errors or exhaustion abort startup rather than silently using a fixed port.
+
+To disable, set `experimental_random_port: false`, restart the add-on, and restore
+forwarding to your configured `listen_port`.
+
 ## Troubleshooting
 
 Start with **Open Web UI -> Health**. Every check below is reported there together with the reason.

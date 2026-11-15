@@ -18,6 +18,7 @@ class AddonConfig:
     server_host: str = "0.0.0.0"
     public_endpoint: str = ""
     listen_port: int = 1194
+    experimental_random_port: bool = False
     public_port: int = 1194
     protocol: str = "udp"
     device: str = "tun"

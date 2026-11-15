@@ -14,6 +14,7 @@ from typing import Any, Callable
 
 from .config import DATA_ROOT, AddonConfig, load_config
 from .health import collect_health, worst_status
+from .listen_port import recorded_listen_port, select_listen_port
 from .network import apply_network, ip_forward_enabled, remove_network
 from .pki import PkiManager
 from .renderer import effective_push_networks, render_client_config, render_server_config
@@ -106,6 +107,7 @@ def cmd_run(_: argparse.Namespace) -> int:
     pki.ensure_base()
     pki.ensure_client(config.client_name)
     sync_client_ips(config, pki)
+    config.listen_port = select_listen_port(config)
     config.server_conf_path.write_text(render_server_config(config), encoding="utf-8")
     log_routing_intent(config)
     export_default_client(config)
@@ -142,6 +144,7 @@ def cmd_run(_: argparse.Namespace) -> int:
 
 def cmd_status(_: argparse.Namespace) -> int:
     config = load_and_validate()
+    config.listen_port = recorded_listen_port(config)
     print(status_json(config))
     return 0
 
