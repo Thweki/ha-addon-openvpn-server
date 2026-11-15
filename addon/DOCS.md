@@ -5,6 +5,39 @@ Full repository documentation:
 - [README.md](https://github.com/Thweki/ha-addon-openvpn-server/blob/main/README.md)
 - [README.zh-CN.md](https://github.com/Thweki/ha-addon-openvpn-server/blob/main/README.zh-CN.md)
 
+## Experimental download bandwidth limit
+
+To keep VPN downloads from saturating your home uplink, enable a shared cap in
+the add-on options, then restart the add-on:
+
+```yaml
+experimental_bandwidth_limit: true
+download_limit_kbps: 10000
+```
+
+The flag defaults to `false`; the rate defaults to `10000` (10 Mbit/s).
+Accepted rates are 64–1000000 **kilobits per second** (decimal, not bytes).
+The cap applies to the combined server-to-client tunnel traffic, including
+downloads from Home Assistant, LAN hosts and forwarded internet traffic. It is
+not a per-client allocation or fairness guarantee. Client uploads are unlimited.
+Encryption/transport overhead is outside the cap, so allow headroom below your
+home uplink rate. Short bursts are possible; excess queued traffic is dropped.
+
+Both UDP and TCP are supported. This requires `device: tun` and
+`client_to_client: false`. Enabling the feature disables data-channel offload
+(DCO), which can reduce peak performance. Existing client profiles need no change.
+The implementation uses Linux `tc` TBF on `tun0`, with a burst allowance of at
+least 1600 bytes or 10 ms of traffic and a queue latency setting of 100 ms.
+The bundled `iproute2` package includes `tc`; the host kernel must support TBF.
+
+If the hook cannot install the cap (for example, missing kernel support or an
+existing root qdisc), OpenVPN startup fails and logs `Bandwidth limit setup
+failed`. It does not overwrite an existing qdisc or run uncapped. The limit
+survives OpenVPN soft restarts with the tunnel; a full process restart removes
+the tunnel and its qdisc and installs the configured rate on the new tunnel.
+Changing the rate or setting `experimental_bandwidth_limit: false` requires an
+add-on restart. Do not alter `tun0` traffic control externally while it is active.
+
 ## Troubleshooting
 
 Start with **Open Web UI -> Health**. Every check below is reported there together with the reason.

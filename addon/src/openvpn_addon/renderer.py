@@ -43,6 +43,7 @@ def render_server_config(config: AddonConfig) -> str:
         status_interval=config.status_interval,
         verb=_verb_level(config.log_level),
         explicit_exit_notify=_explicit_exit_notify(config),
+        bandwidth_limit=_bandwidth_limit(config),
     )
 
 
@@ -130,6 +131,18 @@ def _inactive_timeout(seconds: int) -> str:
 def _explicit_exit_notify(config: AddonConfig) -> str:
     # OpenVPN ignores this for TCP and logs a notice about it.
     return "explicit-exit-notify 1" if config.protocol == "udp" else ""
+
+
+def _bandwidth_limit(config: AddonConfig) -> str:
+    if not config.experimental_bandwidth_limit:
+        return ""
+    # DCO and userspace client-to-client routing can bypass the TUN qdisc.
+    # The up hook runs after TUN creation, before OpenVPN accepts clients.
+    return (
+        "disable-dco\nscript-security 2\n"
+        'up "/usr/bin/python3 /opt/openvpn_server/src/openvpn_addon/bandwidth.py '
+        f'{config.download_limit_kbps}"'
+    )
 
 
 def _redirect_gateway(enabled: bool) -> str:

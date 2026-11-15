@@ -3,6 +3,7 @@ from __future__ import annotations
 import ipaddress
 import re
 
+from .bandwidth import validate_download_rate
 from .config import AddonConfig
 
 
@@ -54,6 +55,13 @@ def validate_config(config: AddonConfig) -> None:
     if config.crl_valid_days <= 0:
         raise ValueError("crl_valid_days must be > 0")
 
+    validate_download_rate(config.download_limit_kbps)
+    if config.experimental_bandwidth_limit:
+        if config.device != "tun":
+            raise ValueError("experimental_bandwidth_limit requires device: tun")
+        if config.client_to_client:
+            raise ValueError("experimental_bandwidth_limit requires client_to_client: false")
+
     validate_client_name(config.client_name)
 
     vpn_network = ipaddress.IPv4Network(config.vpn_network, strict=False)
@@ -102,6 +110,13 @@ def config_warnings(config: AddonConfig) -> list[str]:
     if config.redirect_gateway:
         warnings.append(
             "redirect_gateway is enabled; all client internet traffic will be sent through the VPN."
+        )
+
+    if config.experimental_bandwidth_limit:
+        warnings.append(
+            f"Experimental bandwidth limit: client downloads share {config.download_limit_kbps} "
+            "kbit/s; uploads are unlimited and data-channel offload is disabled. "
+            "OpenVPN will not start if tunnel shaping cannot be installed."
         )
 
     if config.duplicate_cn:

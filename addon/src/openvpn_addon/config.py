@@ -28,6 +28,8 @@ class AddonConfig:
     local_networks: list[str] = field(default_factory=list)
     nat_enabled: bool = True
     redirect_gateway: bool = False
+    experimental_bandwidth_limit: bool = False
+    download_limit_kbps: int = 10000
     cipher: str = "AES-256-GCM"
     auth: str = "SHA256"
     tls_crypt: bool = True
