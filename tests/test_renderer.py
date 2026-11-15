@@ -75,6 +75,27 @@ class RealTemplateTests(unittest.TestCase):
         self.config.runtime_dir.mkdir(parents=True, exist_ok=True)
         self.config.local_networks = ["192.168.1.0/24"]
 
+    def test_server_config_binds_to_server_host(self):
+        for protocol in ("udp", "tcp"):
+            with self.subTest(protocol=protocol):
+                self.config.protocol = protocol
+                output = renderer.render_server_config(self.config)
+                self.assertEqual(
+                    [line for line in output.splitlines() if line.startswith("local ")],
+                    ["local 192.168.1.6"],
+                )
+
+    def test_server_config_preserves_ipv4_wildcard_binding(self):
+        self.config.server_host = "0.0.0.0"
+        for protocol in ("udp", "tcp"):
+            with self.subTest(protocol=protocol):
+                self.config.protocol = protocol
+                output = renderer.render_server_config(self.config)
+                self.assertEqual(
+                    [line for line in output.splitlines() if line.startswith("local ")],
+                    ["local 0.0.0.0"],
+                )
+
     def test_server_config_uses_modern_crypto_directives(self):
         output = renderer.render_server_config(self.config)
         self.assertIn("data-ciphers AES-256-GCM:AES-128-GCM:CHACHA20-POLY1305", output)
