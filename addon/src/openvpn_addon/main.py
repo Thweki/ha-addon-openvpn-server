@@ -13,6 +13,7 @@ from pathlib import Path
 from typing import Any, Callable
 
 from .config import DATA_ROOT, AddonConfig, load_config
+from .expiry import collect_expiry, expiry_text
 from .health import collect_health, worst_status
 from .network import apply_network, ip_forward_enabled, remove_network
 from .pki import PkiManager
@@ -42,6 +43,11 @@ def build_parser() -> argparse.ArgumentParser:
     _command(subparsers, "init", cmd_init)
     _command(subparsers, "run", cmd_run)
     _command(subparsers, "status", cmd_status)
+
+    expiry = subparsers.add_parser("expiry", help="Report CA and server certificate expiry without changing PKI")
+    expiry.add_argument("--within-days", type=_non_negative_days, default=30, help="Warning window in days (default: 30)")
+    expiry.add_argument("--format", choices=("text", "json"), default="text")
+    expiry.set_defaults(func=cmd_expiry)
 
     client = subparsers.add_parser("client", help="Manage OpenVPN client certificates and exports")
     client_sub = client.add_subparsers(dest="client_command", required=True)
@@ -144,6 +150,22 @@ def cmd_status(_: argparse.Namespace) -> int:
     config = load_and_validate()
     print(status_json(config))
     return 0
+
+
+def _non_negative_days(value: str) -> int:
+    try:
+        days = int(value)
+    except ValueError:
+        raise argparse.ArgumentTypeError("days must be a non-negative integer") from None
+    if days < 0:
+        raise argparse.ArgumentTypeError("days must be a non-negative integer")
+    return days
+
+
+def cmd_expiry(args: argparse.Namespace) -> int:
+    report = collect_expiry(DATA_ROOT / "pki", args.within_days)
+    print(json.dumps(report, indent=2) if args.format == "json" else expiry_text(report))
+    return {"ok": 0, "warning": 1, "error": 2}[report["status"]]
 
 
 def cmd_client_create(args: argparse.Namespace) -> int:
