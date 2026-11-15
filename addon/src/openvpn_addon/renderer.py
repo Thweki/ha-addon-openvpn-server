@@ -17,6 +17,8 @@ def render_server_config(config: AddonConfig) -> str:
     template = Template((TEMPLATES_DIR / "server.conf.tpl").read_text(encoding="utf-8"))
     pushed_networks = effective_push_networks(config.push_routes, config.local_networks)
     return template.substitute(
+        # Render 0.0.0.0 explicitly to preserve binding on all IPv4 interfaces.
+        server_host=config.server_host,
         port=config.listen_port,
         protocol=config.protocol,
         device=config.device,

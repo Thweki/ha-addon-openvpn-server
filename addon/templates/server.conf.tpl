@@ -1,3 +1,4 @@
+local ${server_host}
 port ${port}
 proto ${protocol}
 dev ${device}0
