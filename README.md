@@ -131,6 +131,10 @@ openvpn-addon client revoke iphone
 openvpn-addon client list
 ```
 
+For an optional connection-time certificate CN restriction, see
+[experimental client identity verification](addon/DOCS.md#experimental-client-identity-verification).
+It is disabled by default and supports an exact name or a device-name prefix.
+
 ## Client Profiles
 
 Client profiles embed the client private key and are written with mode `0600`. Download them from the panel.
