@@ -14,6 +14,7 @@ from typing import Any, Callable
 
 from .config import DATA_ROOT, AddonConfig, load_config
 from .health import collect_health, worst_status
+from .leases import collect_leases
 from .network import apply_network, ip_forward_enabled, remove_network
 from .pki import PkiManager
 from .renderer import effective_push_networks, render_client_config, render_server_config
@@ -64,6 +65,9 @@ def build_parser() -> argparse.ArgumentParser:
 
     list_parser = client_sub.add_parser("list", help="List issued client certificates")
     list_parser.set_defaults(func=cmd_client_list)
+
+    leases = client_sub.add_parser("leases", help="Show observed VPN addresses and saved fixed assignments as JSON")
+    leases.set_defaults(func=cmd_client_leases)
     return parser
 
 
@@ -143,6 +147,12 @@ def cmd_run(_: argparse.Namespace) -> int:
 def cmd_status(_: argparse.Namespace) -> int:
     config = load_and_validate()
     print(status_json(config))
+    return 0
+
+
+def cmd_client_leases(_: argparse.Namespace) -> int:
+    config = load_and_validate()
+    print(json.dumps(collect_leases(config), ensure_ascii=True, indent=2))
     return 0
 
 

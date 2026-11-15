@@ -35,6 +35,44 @@ The add-on keeps running and retrying with backoff so the panel stays reachable,
 
 The panel's **Download diagnostics** produces a text bundle with the status payload, runtime details and the rendered `server.conf`. Attach it to bug reports; it does not contain private keys.
 
+## Client address leases
+
+Inside the add-on container, run:
+
+```sh
+openvpn-addon client leases
+```
+
+This read-only command prints JSON with `leases`, `status`, and `fixed_assignments`.
+It reads only the OpenVPN status snapshot and saved `client_ips.json` address map
+after loading configuration. It does not read certificates, private keys, or profiles,
+run network commands, allocate addresses, or write files. No new option is required.
+
+Each lease includes `name`, `vpn_address`, `source`, `real_address`, and
+`connected_since`. A `session` row is an observation from the last status snapshot;
+a `fixed` row is a saved assignment, not proof of a connection. Matching saved and
+observed addresses appear once as a session. If the addresses differ, both appear
+so you can see the discrepancy. Multiple sessions sharing a certificate remain
+separate. A session with no matching IP route has `vpn_address: null`.
+
+The reader supports OpenVPN status versions 1, 2, and 3. For the add-on's default
+version 1, it matches client and routing tables by name and remote endpoint.
+Versions 2/3 supply addresses directly in named client columns. Network routes and
+MAC addresses are not treated as client IPs. No DHCP-style lease expiry is inferred.
+
+`status.state` is `fresh`, `stale`, `missing`, `unreadable`, or `invalid`.
+`age_seconds` is the status file's modification age, or null when unavailable.
+Snapshots older than twice `status_interval` are labelled stale; their observations
+are retained. Freshness does not prove that the OpenVPN process is still running.
+Incomplete, malformed, or unsupported snapshots produce no session rows; retry
+after the next status update. Saved assignments can still be listed independently.
+
+`fixed_assignments` is `ok`, `partial` (invalid entries omitted), `missing`,
+`unreadable`, `invalid`, or `disabled`. Retained maps are ignored when fixed IPs are
+disabled or shared-certificate mode is enabled. Saved assignments are not checked
+against certificates or CCD files. The command returns success even when a source
+is unavailable; scripts should inspect the source states before using the rows.
+
 ## Files and paths
 
 - Client profiles: `/data/openvpn/exports/` (mode `0600`)
