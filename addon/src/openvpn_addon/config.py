@@ -33,6 +33,7 @@ class AddonConfig:
     tls_crypt: bool = True
     client_to_client: bool = False
     duplicate_cn: bool = False
+    max_clients: int = 0
     fixed_client_ips: bool = True
     publish_profiles_to_share: bool = False
     crl_valid_days: int = 3650
@@ -179,6 +180,9 @@ def _coerce_scalars(payload: dict[str, object]) -> dict[str, object]:
         if annotation == "bool":
             result[item.name] = _coerce_bool(value)
         elif annotation == "int":
+            # A fractional or boolean connection cap must not silently become 0/1.
+            if item.name == "max_clients" and isinstance(value, (bool, float)):
+                raise ValueError("max_clients must be an integer between 0 and 1024")
             result[item.name] = _coerce_int(value)
         else:
             result[item.name] = value

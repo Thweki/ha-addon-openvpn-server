@@ -45,6 +45,9 @@ def validate_config(config: AddonConfig) -> None:
     if config.inactive_timeout < 0:
         raise ValueError("inactive_timeout must be >= 0")
 
+    if type(config.max_clients) is not int or not 0 <= config.max_clients <= 1024:
+        raise ValueError("max_clients must be an integer between 0 and 1024 (0 disables the override)")
+
     if config.status_interval <= 0:
         raise ValueError("status_interval must be > 0")
 

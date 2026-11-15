@@ -66,6 +66,10 @@
       "name": "Share one certificate between devices",
       "description": "Off (recommended): one certificate per device, and each client gets a fixed VPN address. On: devices can share a single profile, but revoking that certificate logs out all of them and fixed addresses are disabled."
     },
+    "max_clients": {
+      "name": "Concurrent client limit",
+      "description": "Maximum simultaneous VPN connections (1–1024). 0 leaves the OpenVPN default unchanged. Shared-certificate sessions count separately. Restart the add-on to apply."
+    },
     "fixed_client_ips": {
       "name": "Assign fixed VPN addresses",
       "description": "Gives every client a stable VPN address, which makes router and firewall rules predictable. Only applies when certificates are not shared."
