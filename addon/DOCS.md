@@ -35,6 +35,30 @@ The add-on keeps running and retrying with backoff so the panel stays reachable,
 
 The panel's **Download diagnostics** produces a text bundle with the status payload, runtime details and the rendered `server.conf`. Attach it to bug reports; it does not contain private keys.
 
+### Experimental CRL renewal preview
+
+Inside the add-on container, explicitly opt in for each invocation:
+
+```sh
+openvpn-addon crl-renew-preview --experimental
+```
+
+Without `--experimental`, the command is disabled and exits before reading options or PKI.
+The JSON plan simulates one check using the auto-renewal policy proposed in
+[PR #27](https://github.com/Thweki/ha-addon-openvpn-server/pull/27): renew within seven
+days of CRL expiry, or half of `crl_valid_days` for shorter lifetimes. An expired or
+missing CRL would be renewed; a missing PKI index or unreadable CRL blocks the plan.
+It reports `renew`, `keep`, or `blocked`, the reason, the renewal window in seconds,
+the eligibility time, and the proposed expiry if renewed now. Times are UTC. Exit
+status is `0` for a completed plan (including `renew`) and `2` when disabled or blocked.
+
+This is a point-in-time policy simulation, not a signing readiness check: it does
+not inspect keys, validate the index contents or CRL signature, or guarantee that
+EasyRSA could sign successfully. Concurrent PKI changes can make a plan stale.
+It never runs EasyRSA, creates locks or directories, writes PKI, renews certificates,
+or restarts OpenVPN. It does not enable automatic renewal or change existing startup
+behavior; startup still rebuilds the CRL. No restart is needed to run the preview.
+
 ## Files and paths
 
 - Client profiles: `/data/openvpn/exports/` (mode `0600`)
