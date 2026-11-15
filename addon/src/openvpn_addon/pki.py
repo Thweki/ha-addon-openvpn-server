@@ -125,7 +125,8 @@ class PkiManager:
                 entries[name[len("/CN=") :]] = fields[0].strip()
         return entries
 
-    def list_clients(self) -> list[ClientInfo]:
+    def list_clients(self, *, include_expiry: bool = True) -> list[ClientInfo]:
+        """List clients, optionally skipping OpenSSL expiry reads when only status is needed."""
         names = set(self.index_entries())
         issued_dir = self.config.pki_dir / "issued"
         if issued_dir.exists():
@@ -137,7 +138,7 @@ class PkiManager:
             status = self.client_status(name)
             if status == STATUS_MISSING:
                 continue
-            expires = self._cert_expiry(name)
+            expires = self._cert_expiry(name) if include_expiry else None
             result.append(ClientInfo(name=name, status=status, expires=expires))
         return result
 

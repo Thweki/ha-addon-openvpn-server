@@ -426,7 +426,7 @@ def ensure_dirs(config: AddonConfig) -> None:
 
 
 def sync_client_ips(config: AddonConfig, pki: PkiManager) -> dict[str, str]:
-    names = [client.name for client in pki.list_clients() if client.status == "valid"]
+    names = [client.name for client in pki.list_clients(include_expiry=False) if client.status == "valid"]
     try:
         assignments = pki.ensure_client_ips(names)
     except (OSError, RuntimeError) as error:
