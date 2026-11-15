@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+- Experimental, opt-in IPv6 TUN addressing with a validated /64 subnet and IPv6
+  assignments for fixed-address clients. Disabled by default; adds IPv6 alongside
+  IPv4 without IPv6 NAT or internet redirection. See DOCS.md for setup and limits.
+
 ## 0.2.2
 
 ### Changed

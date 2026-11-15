@@ -23,6 +23,8 @@ class AddonConfig:
     device: str = "tun"
     vpn_subnet: str = "10.8.0.0"
     vpn_netmask: str = "255.255.255.0"
+    experimental_ipv6: bool = False
+    vpn_ipv6_subnet: str = "fd42:6f70:656e:8::/64"
     dns_servers: list[str] = field(default_factory=lambda: ["1.1.1.1", "8.8.8.8"])
     push_routes: list[str] = field(default_factory=list)
     local_networks: list[str] = field(default_factory=list)

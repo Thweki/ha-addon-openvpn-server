@@ -38,6 +38,14 @@
       "name": "VPN netmask",
       "description": "Netmask for the VPN network, for example 255.255.255.0."
     },
+    "experimental_ipv6": {
+      "name": "Experimental IPv6 tunnel addresses",
+      "description": "Off by default. Adds IPv6 addresses inside the TUN VPN. Requires IPv6 on the host and clients. Does not enable IPv6 LAN/internet routing or NAT. Restart after changing."
+    },
+    "vpn_ipv6_subnet": {
+      "name": "IPv6 VPN network",
+      "description": "Unique-local or global-unicast /64, for example fd42:6f70:656e:8::/64. Choose a separate network that does not overlap your LAN or other VPNs. Used only with experimental_ipv6."
+    },
     "dns": {
       "name": "DNS pushed to clients",
       "description": "Comma separated DNS servers sent to VPN clients, for example 223.5.5.5, 119.29.29.29."

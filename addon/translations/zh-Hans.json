@@ -38,6 +38,14 @@
       "name": "VPN 掩码",
       "description": "VPN 网段的掩码，例如 255.255.255.0。"
     },
+    "experimental_ipv6": {
+      "name": "实验性 IPv6 隧道地址",
+      "description": "默认关闭。在 TUN VPN 内分配 IPv6 地址，主机和客户端必须启用 IPv6。不启用 IPv6 局域网或互联网路由，也不启用 IPv6 NAT。修改后需重启插件。"
+    },
+    "vpn_ipv6_subnet": {
+      "name": "IPv6 VPN 网段",
+      "description": "唯一局部或全球单播 /64 网段，例如 fd42:6f70:656e:8::/64。请选择不与局域网或其他 VPN 重叠的独立网段。仅在 experimental_ipv6 开启时使用。"
+    },
     "dns": {
       "name": "推送给客户端的 DNS",
       "description": "下发给 VPN 客户端的 DNS，多个用逗号分隔，例如 223.5.5.5, 119.29.29.29。"

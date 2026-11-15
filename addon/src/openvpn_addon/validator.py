@@ -27,6 +27,20 @@ def validate_config(config: AddonConfig) -> None:
     ipaddress.IPv4Address(config.vpn_subnet)
     ipaddress.IPv4Address(config.vpn_netmask)
 
+    if config.experimental_ipv6:
+        if config.device != "tun":
+            raise ValueError("experimental_ipv6 requires device to be tun")
+        try:
+            network = ipaddress.IPv6Network(config.vpn_ipv6_subnet, strict=True)
+        except (TypeError, ValueError) as exc:
+            raise ValueError("vpn_ipv6_subnet must be an IPv6 network in CIDR notation") from exc
+        # Start with a full /64: compatible with clients and ample room for the pool.
+        if network.prefixlen != 64 or not any(
+            network.subnet_of(ipaddress.IPv6Network(prefix))
+            for prefix in ("fc00::/7", "2000::/3")
+        ):
+            raise ValueError("vpn_ipv6_subnet must be a unique-local or global-unicast /64 network")
+
     if config.public_endpoint:
         _validate_public_endpoint(config.public_endpoint)
 
@@ -75,6 +89,13 @@ def validate_client_name(name: str) -> None:
 
 def config_warnings(config: AddonConfig) -> list[str]:
     warnings: list[str] = []
+
+    if config.experimental_ipv6:
+        warnings.append(
+            "experimental_ipv6 enables IPv6 tunnel addresses only. NAT, LAN routes, "
+            "and redirect_gateway remain IPv4 only; IPv6 internet traffic "
+            "is not redirected or blocked. The host and clients must have IPv6 enabled."
+        )
 
     for option in config.unknown_options:
         warnings.append(
