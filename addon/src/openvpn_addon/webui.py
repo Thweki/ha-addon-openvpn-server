@@ -327,6 +327,7 @@ async function load(){
   $("summary").innerHTML =
     `${badge(worst)} &nbsp; listens on <code>${s.listen_address}</code> · clients connect to <code>${s.public_address}</code>`
     + ` · protocol <code>${s.protocol}</code>`
+    + (s.experimental_random_port ? ` · <b>experimental random listen port</b> (update router forwarding after each add-on start)` : "")
     + ` · LAN access <b>${s.nat_enabled && s.lan_access ? "on" : "off"}</b>`
     + ` · routes <code>${status.routes.join(", ") || "none"}</code>`
     + ` · CRL ${status.crl.days_remaining ?? "?"} day(s) left`;

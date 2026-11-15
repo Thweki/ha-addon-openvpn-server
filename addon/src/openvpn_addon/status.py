@@ -41,6 +41,7 @@ def collect_status(config: AddonConfig, pki: PkiManager | None = None) -> dict[s
     return {
         "summary": {
             "listen_address": f"{config.server_host}:{config.listen_port}",
+            "experimental_random_port": config.experimental_random_port,
             "public_address": f"{config.public_address}:{config.public_port}",
             "protocol": config.protocol,
             "lan_access": bool(config.local_networks),

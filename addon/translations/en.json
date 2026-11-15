@@ -10,6 +10,10 @@
       "name": "Local listening port",
       "description": "The port OpenVPN binds on this host. Usually 1194."
     },
+    "experimental_random_port": {
+      "name": "Experimental: random local listen port",
+      "description": "Off by default. Each add-on start selects an available port from 49152–65535 instead of listen_port. Update router forwarding to the port shown in the panel. Client profiles keep their public port."
+    },
     "public_port": {
       "name": "Client connection port",
       "description": "The port written into client profiles. If your router forwards external 9999 to local 1194, put 9999 here."
