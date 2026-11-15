@@ -1,14 +1,30 @@
+import http.client
+import io
+import ipaddress
 import json
 import tempfile
 import unittest
-import urllib.error
-import urllib.request
 from pathlib import Path
+from unittest.mock import Mock, patch
 
 import openvpn_addon.config as config_module
 from openvpn_addon.config import AddonConfig
 from openvpn_addon.validator import validate_client_name
-from openvpn_addon.webui import PanelActions, PanelServer, _match_client_route
+from openvpn_addon.webui import PanelActions, _build_handler, _match_client_route, panel_bind_addresses
+
+
+class MemoryConnection:
+    """Exercise the real HTTP parser and handler without network privileges."""
+
+    def __init__(self, data):
+        self.data = data
+        self.sent = bytearray()
+
+    def makefile(self, *args):
+        return io.BytesIO(self.data)
+
+    def sendall(self, data):
+        self.sent.extend(data)
 
 
 class RouteTests(unittest.TestCase):
@@ -52,30 +68,30 @@ class PanelTests(unittest.TestCase):
                 raise ValueError("unknown client: ghost")
             return "client\nremote vpn.example.com 1194\n"
 
-        actions = PanelActions(
-            issue_client=issue,
-            revoke_client=revoke,
-            export_profile=profile,
-            refresh_crl=lambda: {"status": "ok", "next_update": "Jan 1 00:00:00 2030 GMT"},
-            restart_openvpn=lambda: {"status": "ok", "message": "restarted"},
-            runtime_info=lambda: {"openvpn_running": True},
+        self.actions = PanelActions(
+            issue_client=Mock(side_effect=issue),
+            revoke_client=Mock(side_effect=revoke),
+            export_profile=Mock(side_effect=profile),
+            refresh_crl=Mock(return_value={"status": "ok", "next_update": "Jan 1 00:00:00 2030 GMT"}),
+            restart_openvpn=Mock(return_value={"status": "ok", "message": "restarted"}),
+            runtime_info=Mock(return_value={"openvpn_running": True}),
         )
-        self.panel = PanelServer(self.config, actions, "127.0.0.1", 0)
-        self.panel.start()
-        self.addCleanup(self.panel.stop)
-        self.base = f"http://127.0.0.1:{self.panel.address[1]}"
+        self.handler = _build_handler(self.config, self.actions)
 
-    def request(self, path, payload=None, method=None):
-        data = None if payload is None else json.dumps(payload).encode("utf-8")
-        request = urllib.request.Request(self.base + path, data=data, method=method)
-        try:
-            with urllib.request.urlopen(request, timeout=10) as response:
-                return response.status, response.read().decode("utf-8"), dict(response.headers)
-        except urllib.error.HTTPError as error:
-            try:
-                return error.code, error.read().decode("utf-8"), dict(error.headers)
-            finally:
-                error.close()
+    def request(self, path, payload=None, method=None, peer="172.30.32.2", headers=None, raw_body=None):
+        data = b"" if payload is None else json.dumps(payload).encode("utf-8")
+        if raw_body is not None:
+            data = raw_body
+        method = method or ("GET" if payload is None else "POST")
+        request = f"{method} {path} HTTP/1.0\r\nContent-Length: {len(data)}\r\n"
+        for name, value in (headers or {}).items():
+            request += f"{name}: {value}\r\n"
+        connection = MemoryConnection(request.encode("ascii") + b"\r\n" + data)
+        self.handler(connection, (peer, 12345), Mock())
+        response = http.client.HTTPResponse(MemoryConnection(bytes(connection.sent)), method=method)
+        response.begin()
+        with response:
+            return response.status, response.read().decode("utf-8"), dict(response.headers)
 
     def test_status_endpoint(self):
         status, body, _ = self.request("/api/status")
@@ -99,10 +115,8 @@ class PanelTests(unittest.TestCase):
         self.assertIn("error", json.loads(body)["status"])
 
     def test_invalid_json_body_is_a_bad_request(self):
-        request = urllib.request.Request(self.base + "/api/clients", data=b"{nope", method="POST")
-        with self.assertRaises(urllib.error.HTTPError) as context:
-            urllib.request.urlopen(request, timeout=10)
-        self.assertEqual(400, context.exception.code)
+        status, _, _ = self.request("/api/clients", raw_body=b"{nope", method="POST")
+        self.assertEqual(400, status)
 
     def test_profile_download(self):
         status, body, headers = self.request("/api/clients/alice/profile")
@@ -135,60 +149,124 @@ class PanelTests(unittest.TestCase):
         status, _, _ = self.request("/api/nope")
         self.assertEqual(404, status)
 
+    def test_only_supervisor_peer_can_access_any_endpoint(self):
+        routes = [
+            ("GET", "/"),
+            ("GET", "/api/status"),
+            ("GET", "/api/diagnostics"),
+            ("GET", "/api/clients/alice/profile"),
+            ("POST", "/api/clients"),
+            ("POST", "/api/clients/alice/revoke"),
+            ("POST", "/api/crl/refresh"),
+            ("POST", "/api/openvpn/restart"),
+        ]
+        peers = ("192.168.1.10", "10.20.0.10", "172.30.33.5", "172.30.32.1", "127.0.0.1", "::1")
+        forged_headers = {
+            "X-Forwarded-For": "172.30.32.2",
+            "X-Real-IP": "172.30.32.2",
+            "Forwarded": "for=172.30.32.2",
+            "X-Ingress-Path": "/api/hassio_ingress/forged",
+            "X-Remote-User-Name": "admin",
+        }
+        with patch("openvpn_addon.webui.collect_status") as status_action:
+            for peer in peers:
+                for method, path in routes:
+                    with self.subTest(peer=peer, method=method, path=path):
+                        status, body, _ = self.request(
+                            path, {"client_name": "alice"} if method == "POST" else None,
+                            method=method, peer=peer, headers=forged_headers,
+                        )
+                        self.assertEqual(403, status)
+                        self.assertEqual("ingress only", json.loads(body)["message"])
+            status_action.assert_not_called()
+        for action in (
+            self.actions.issue_client, self.actions.revoke_client, self.actions.export_profile,
+            self.actions.refresh_crl, self.actions.restart_openvpn, self.actions.runtime_info,
+        ):
+            action.assert_not_called()
+
+    def test_untrusted_peer_is_rejected_before_body_parsing(self):
+        status, _, _ = self.request("/api/clients", method="POST", peer="192.168.1.10", raw_body=b"{nope")
+        self.assertEqual(403, status)
+        self.actions.issue_client.assert_not_called()
+
+    def test_ingress_uses_socket_peer_despite_forwarded_lan_address(self):
+        status, _, _ = self.request(
+            "/api/clients", {"client_name": "alice"}, headers={"X-Forwarded-For": "192.168.1.10"},
+        )
+        self.assertEqual(200, status)
+        self.actions.issue_client.assert_called_once_with("alice")
+
 
 class PanelBindingTests(unittest.TestCase):
-    """The panel must be reachable from Home Assistant but never from the LAN."""
+    """Only the explicitly identified Supervisor bridge may host the panel."""
 
     def setUp(self):
-        import ipaddress
-
-        from openvpn_addon import network, webui
-
-        self.ipaddress = ipaddress
-        self.network = network
-        self.webui = webui
-        self.original = (network._host_ipv4_addresses, network._default_interface)
-        self.addCleanup(self._restore)
-
-    def _restore(self):
-        self.network._host_ipv4_addresses, self.network._default_interface = self.original
+        discovery = patch("openvpn_addon.webui.network._host_ipv4_addresses")
+        self.discovery = discovery.start()
+        self.addCleanup(discovery.stop)
 
     def _interfaces(self, pairs):
-        self.network._host_ipv4_addresses = lambda: [
-            (name, self.ipaddress.IPv4Interface(value)) for name, value in pairs
+        self.discovery.return_value = [
+            (name, ipaddress.IPv4Interface(value)) for name, value in pairs
         ]
 
-    def _default(self, name):
-        self.network._default_interface = lambda: name
-
-    def test_binds_internal_addresses_and_skips_the_lan(self):
+    def test_binds_only_supervisor_bridge_with_multiple_lan_interfaces(self):
         self._interfaces(
             [
                 ("lo", "127.0.0.1/8"),
                 ("enp1s0", "192.168.1.6/24"),
+                ("enp2s0", "10.20.0.1/24"),
                 ("hassio", "172.30.32.1/23"),
                 ("docker0", "172.30.232.1/24"),
                 ("dummy0", "169.254.10.1/16"),
             ]
         )
-        self._default("enp1s0")
+        # The secondary LAN is deliberately absent from the user's configuration.
         config = AddonConfig(local_networks=["192.168.1.0/24"])
-        self.assertEqual(
-            ["172.30.32.1", "172.30.232.1", "127.0.0.1"],
-            self.webui.panel_bind_addresses(config),
-        )
+        self.assertEqual(["172.30.32.1"], panel_bind_addresses(config))
+        self.assertEqual(["172.30.32.1"], panel_bind_addresses(AddonConfig()))
 
-    def test_skips_addresses_inside_configured_lan_networks(self):
+    def test_unlisted_secondary_lan_is_not_trusted(self):
         self._interfaces([("enp1s0", "10.10.0.5/24"), ("br0", "10.20.0.1/24")])
-        self._default("enp1s0")
         config = AddonConfig(local_networks=["10.10.0.0/24"])
-        self.assertEqual(["10.20.0.1", "127.0.0.1"], self.webui.panel_bind_addresses(config))
+        self.assertEqual([], panel_bind_addresses(config))
 
-    def test_falls_back_to_all_interfaces_with_a_warning_path(self):
+    def test_missing_bridge_disables_panel_instead_of_wildcard_fallback(self):
         self._interfaces([("lo", "127.0.0.1/8"), ("enp1s0", "192.168.1.6/24")])
-        self._default("enp1s0")
         config = AddonConfig(local_networks=["192.168.1.0/24"])
-        self.assertEqual(["0.0.0.0"], self.webui.panel_bind_addresses(config))
+        self.assertEqual([], panel_bind_addresses(config))
+
+    def test_empty_discovery_disables_panel(self):
+        self._interfaces([])
+        self.assertEqual([], panel_bind_addresses(AddonConfig()))
+
+    def test_discovery_error_disables_panel(self):
+        for error in (FileNotFoundError("ip unavailable"), PermissionError("discovery denied")):
+            with self.subTest(error=type(error).__name__):
+                self.discovery.side_effect = error
+                self.assertEqual([], panel_bind_addresses(AddonConfig()))
+
+    def test_unrecognized_or_ambiguous_bridge_disables_panel(self):
+        cases = [
+            [("br0", "172.30.32.1/23")],
+            [("hassio", "10.20.0.1/24")],
+            [("hassio", "172.30.32.3/23")],
+            [("hassio", "172.30.32.1/24")],
+            [("hassio", "172.30.32.1/23"), ("hassio", "10.20.0.1/24")],
+            [("hassio", "172.30.32.1/23"), ("enp2s0", "172.30.32.10/24")],
+            [("hassio", "172.30.32.1/23"), ("hassio", "172.30.32.1/23")],
+        ]
+        for interfaces in cases:
+            with self.subTest(interfaces=interfaces):
+                self._interfaces(interfaces)
+                self.assertEqual([], panel_bind_addresses(AddonConfig()))
+
+    def test_default_route_is_not_a_trust_signal(self):
+        self._interfaces([("hassio", "172.30.32.1/23")])
+        with patch("openvpn_addon.webui.network._default_interface", side_effect=RuntimeError) as route:
+            self.assertEqual(["172.30.32.1"], panel_bind_addresses(AddonConfig()))
+            route.assert_not_called()
 
 
 if __name__ == "__main__":

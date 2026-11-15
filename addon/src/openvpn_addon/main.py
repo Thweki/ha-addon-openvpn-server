@@ -387,15 +387,13 @@ def start_panel(
             continue
         server.start()
         servers.append(server)
-        if address == "0.0.0.0":
-            print(
-                "WARNING: the Supervisor bridge address could not be detected, so the add-on panel listens "
-                "on all interfaces. Do not forward this port from the internet.",
-                flush=True,
-            )
 
     if not servers:
-        print(f"ERROR: the add-on panel could not start on port {PANEL_PORT}.", flush=True)
+        print(
+            f"ERROR: the add-on panel is disabled: unable to identify or bind the Supervisor bridge "
+            f"on port {PANEL_PORT}.",
+            flush=True,
+        )
         return []
     bound = ", ".join(f"{server.address[0]}:{server.address[1]}" for server in servers)
     print(f"Add-on panel listening on {bound} (Home Assistant ingress).", flush=True)
