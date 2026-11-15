@@ -14,6 +14,7 @@ from typing import Any, Callable
 
 from .config import DATA_ROOT, AddonConfig, load_config
 from .health import collect_health, worst_status
+from .keepalive import collect_keepalive
 from .network import apply_network, ip_forward_enabled, remove_network
 from .pki import PkiManager
 from .renderer import effective_push_networks, render_client_config, render_server_config
@@ -42,6 +43,9 @@ def build_parser() -> argparse.ArgumentParser:
     _command(subparsers, "init", cmd_init)
     _command(subparsers, "run", cmd_run)
     _command(subparsers, "status", cmd_status)
+
+    keepalive = subparsers.add_parser("keepalive", help="Report configured keepalive and pushed ping timers as JSON")
+    keepalive.set_defaults(func=cmd_keepalive)
 
     client = subparsers.add_parser("client", help="Manage OpenVPN client certificates and exports")
     client_sub = client.add_subparsers(dest="client_command", required=True)
@@ -144,6 +148,13 @@ def cmd_status(_: argparse.Namespace) -> int:
     config = load_and_validate()
     print(status_json(config))
     return 0
+
+
+def cmd_keepalive(_: argparse.Namespace) -> int:
+    # Read rendered state even if options.json is invalid or has pending edits.
+    report = collect_keepalive(AddonConfig().server_conf_path)
+    print(json.dumps(report, indent=2))
+    return 0 if report["available"] else 1
 
 
 def cmd_client_create(args: argparse.Namespace) -> int:
