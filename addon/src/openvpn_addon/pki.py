@@ -66,12 +66,15 @@ class PkiManager:
     def refresh_crl(self) -> None:
         self._run("gen-crl", cwd=self.config.pki_dir.parent)
 
-    def ensure_client(self, client_name: str) -> IssueResult:
+    def ensure_client(self, client_name: str, *, allow_unrevoke: bool = False) -> IssueResult:
+        """Provision a client, preserving revocation unless explicitly reactivated."""
         validate_client_name(client_name)
         status = self.client_status(client_name)
         if status == STATUS_VALID:
             return IssueResult(client_name, "exists", "client certificate already exists and is valid")
         if status == STATUS_REVOKED:
+            if not allow_unrevoke:
+                return IssueResult(client_name, "revoked", "client certificate remains revoked")
             # EasyRSA keeps revoked names in index.txt, so the certificate is re-enabled rather
             # than silently re-exported in a revoked state.
             self._run("unrevoke", client_name, cwd=self.config.pki_dir.parent)

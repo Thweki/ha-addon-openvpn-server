@@ -15,7 +15,7 @@ from typing import Any, Callable
 from .config import DATA_ROOT, AddonConfig, load_config
 from .health import collect_health, worst_status
 from .network import apply_network, ip_forward_enabled, remove_network
-from .pki import PkiManager
+from .pki import STATUS_REVOKED, PkiManager
 from .renderer import effective_push_networks, render_client_config, render_server_config
 from .requests import archive_request, reject_request, scan_client_requests, write_result
 from .status import collect_status, status_json
@@ -92,7 +92,7 @@ def cmd_init(_: argparse.Namespace) -> int:
     pki.ensure_client(config.client_name)
     sync_client_ips(config, pki)
     config.server_conf_path.write_text(render_server_config(config), encoding="utf-8")
-    export_default_client(config)
+    export_default_client(config, pki)
     process_pending_requests(config)
     print(f"Initialized add-on state under {DATA_ROOT}", flush=True)
     return 0
@@ -108,7 +108,7 @@ def cmd_run(_: argparse.Namespace) -> int:
     sync_client_ips(config, pki)
     config.server_conf_path.write_text(render_server_config(config), encoding="utf-8")
     log_routing_intent(config)
-    export_default_client(config)
+    export_default_client(config, pki)
     process_pending_requests(config)
 
     network = apply_network(config)
@@ -437,7 +437,10 @@ def sync_client_ips(config: AddonConfig, pki: PkiManager) -> dict[str, str]:
     return assignments
 
 
-def export_default_client(config: AddonConfig) -> None:
+def export_default_client(config: AddonConfig, pki: PkiManager) -> None:
+    if pki.client_status(config.client_name) == STATUS_REVOKED:
+        print("Skipping default client export because its certificate is revoked.", flush=True)
+        return
     if config.public_address == "0.0.0.0":
         print(
             "Skipping default client export because public_endpoint/server_host is not routable yet.",
@@ -453,7 +456,7 @@ def export_default_client(config: AddonConfig) -> None:
 
 
 def issue_client(config: AddonConfig, pki: PkiManager, name: str) -> dict[str, Any]:
-    outcome = pki.ensure_client(name)
+    outcome = pki.ensure_client(name, allow_unrevoke=True)
     print(f"Issued client certificate: {name} ({outcome.action}) — {outcome.detail}", flush=True)
     sync_client_ips(config, pki)
     exported = export_client(config, name)
