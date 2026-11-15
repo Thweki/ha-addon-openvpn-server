@@ -18,7 +18,7 @@ from .network import apply_network, ip_forward_enabled, remove_network
 from .pki import PkiManager
 from .renderer import effective_push_networks, render_client_config, render_server_config
 from .requests import archive_request, reject_request, scan_client_requests, write_result
-from .status import collect_status, status_json
+from .status import collect_status, learn_client_addresses, status_json
 from .validator import config_warnings, validate_client_name, validate_config
 from .webui import PanelActions, PanelServer, panel_bind_addresses
 
@@ -312,6 +312,10 @@ class RequestWatcher(threading.Thread):
                 process_pending_requests(self.config)
             except Exception as error:  # noqa: BLE001 - the watcher must never die
                 print(f"ERROR: request watcher failed: {error}", flush=True)
+            try:
+                learn_client_addresses(self.config)
+            except Exception:  # noqa: BLE001 - optional metadata must not stop request processing
+                print("WARNING: unable to update learned client addresses", flush=True)
 
     def stop(self) -> None:
         self.stop_event.set()

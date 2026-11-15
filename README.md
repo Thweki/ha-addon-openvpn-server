@@ -57,7 +57,7 @@ Field summary:
 `Settings -> Add-ons -> OpenVPN Server -> Open Web UI` (administrators only):
 
 - **Health**: LAN forwarding/NAT, `ip_forward`, CRL validity, port mapping and configuration warnings
-- **Clients**: issue, revoke, see who is online and download `.ovpn` profiles
+- **Clients**: issue, revoke, see who is online, view each client's last learned public endpoint and download `.ovpn` profiles
 - **Maintenance**: rebuild the CRL, restart OpenVPN, download a diagnostics bundle
 
 ## Common Deployment Examples

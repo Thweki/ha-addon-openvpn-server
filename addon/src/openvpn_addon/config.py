@@ -114,6 +114,10 @@ class AddonConfig:
         return self.runtime_dir / "client_ips.json"
 
     @property
+    def learned_addresses_path(self) -> Path:
+        return self.runtime_dir / "learned_addresses.json"
+
+    @property
     def public_address(self) -> str:
         return self.public_endpoint.strip() or self.server_host.strip()
 

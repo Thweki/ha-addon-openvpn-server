@@ -276,10 +276,11 @@ code{background:rgba(127,127,127,.15);border-radius:4px;padding:1px 4px}
     <ul class="health" id="health"></ul>
   </div>
 
-  <div class="card">
+  <div class="card" style="grid-column:1/-1;overflow-x:auto">
     <h2>Clients</h2>
-    <table><thead><tr><th>name</th><th>state</th><th>VPN IP</th><th>online</th><th></th></tr></thead>
+    <table><thead><tr><th>name</th><th>state</th><th>VPN IP</th><th>online</th><th>Last public endpoint</th><th></th></tr></thead>
     <tbody id="clients"></tbody></table>
+    <p class="muted">Last endpoint observed by the server, with snapshot time (UTC). Retained after disconnect; not proof the client is online.</p>
     <div class="row">
       <input type="text" id="newclient" placeholder="new client name">
       <button class="primary" id="issue">Issue</button>
@@ -320,6 +321,9 @@ function badge(status){
   const cls = status === "ok" ? "ok" : status === "warn" ? "warn" : "err";
   return `<span class="badge ${cls}">${status}</span>`;
 }
+function escapeHtml(value){
+  return String(value).replace(/[&<>"']/g, (c) => ({"&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;"}[c]));
+}
 async function load(){
   const status = await api("api/status");
   const s = status.summary;
@@ -338,11 +342,12 @@ async function load(){
       <td>${c.status}</td>
       <td>${c.vpn_address || "—"}</td>
       <td>${c.online ? "yes" : "no"}</td>
+      <td>${c.last_real_address ? `<code>${escapeHtml(c.last_real_address)}</code><br><small class="muted">${escapeHtml(c.last_real_address_at || "")}</small>` : "—"}</td>
       <td>
         <button data-download="${c.name}">.ovpn</button>
         ${c.status === "valid" ? `<button data-revoke="${c.name}">revoke</button>` : ""}
       </td>
-    </tr>`).join("") || `<tr><td colspan="5" class="muted">no clients yet</td></tr>`;
+    </tr>`).join("") || `<tr><td colspan="6" class="muted">no clients yet</td></tr>`;
 }
 document.addEventListener("click", async (event) => {
   const button = event.target.closest("button");

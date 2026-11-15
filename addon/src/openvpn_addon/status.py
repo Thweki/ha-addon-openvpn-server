@@ -1,6 +1,10 @@
 from __future__ import annotations
 
+import ipaddress
 import json
+import os
+import tempfile
+from datetime import datetime, timezone
 from pathlib import Path
 
 from .config import AddonConfig
@@ -15,6 +19,7 @@ def collect_status(config: AddonConfig, pki: PkiManager | None = None) -> dict[s
     manager = pki or PkiManager(config)
     online = _parse_status(config.status_path)
     fixed_ips = _load_fixed_ips(config)
+    learned = load_learned_addresses(config)
     checks = collect_health(config, manager)
     networks = effective_push_networks(config.push_routes, config.local_networks)
     crl = manager.crl_info()
@@ -30,6 +35,8 @@ def collect_status(config: AddonConfig, pki: PkiManager | None = None) -> dict[s
                 "vpn_address": fixed_ips.get(client.name) or session.get("virtual_address"),
                 "online": client.name in online,
                 "real_address": session.get("real_address"),
+                "last_real_address": learned.get(client.name, {}).get("address"),
+                "last_real_address_at": learned.get(client.name, {}).get("observed_at"),
                 "bytes_received": session.get("bytes_received"),
                 "bytes_sent": session.get("bytes_sent"),
                 "connected_since": session.get("connected_since"),
@@ -107,9 +114,13 @@ def _load_fixed_ips(config: AddonConfig) -> dict[str, str]:
 def _parse_status(path: Path) -> dict[str, dict[str, str]]:
     if not path.exists():
         return {}
+    return _parse_status_text(path.read_text(encoding="utf-8", errors="replace"))
+
+
+def _parse_status_text(text: str) -> dict[str, dict[str, str]]:
     results: dict[str, dict[str, str]] = {}
     in_section = False
-    for line in path.read_text(encoding="utf-8", errors="replace").splitlines():
+    for line in text.splitlines():
         if line.startswith("Common Name,"):
             in_section = True
             continue
@@ -129,3 +140,80 @@ def _parse_status(path: Path) -> dict[str, dict[str, str]]:
             "connected_since": parts[5] if len(parts) > 5 else "",
         }
     return results
+
+
+def _valid_endpoint(value: object) -> bool:
+    if not isinstance(value, str):
+        return False
+    host, separator, port = value.rpartition(":")
+    try:
+        ipaddress.ip_address(host[1:-1] if host.startswith("[") and host.endswith("]") else host)
+        return bool(separator) and port.isascii() and port.isdecimal() and 0 < int(port) <= 65535
+    except ValueError:
+        return False
+
+
+def load_learned_addresses(config: AddonConfig) -> dict[str, dict[str, str]]:
+    """Load only validated endpoint metadata; a damaged cache is disposable."""
+    try:
+        payload = json.loads(config.learned_addresses_path.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return {}
+    if not isinstance(payload, dict):
+        return {}
+    result = {}
+    for name, record in payload.items():
+        if not isinstance(record, dict) or not _valid_endpoint(record.get("address")):
+            continue
+        try:
+            observed_at = datetime.fromisoformat(record["observed_at"])
+            if observed_at.tzinfo is None:
+                continue
+            timestamp = observed_at.astimezone(timezone.utc).isoformat()
+        except (KeyError, TypeError, ValueError, OverflowError):
+            continue
+        result[name] = {
+            "address": record["address"],
+            "observed_at": timestamp,
+        }
+    return result
+
+
+def learn_client_addresses(config: AddonConfig) -> None:
+    """Keep one endpoint per issued client, independently of panel requests."""
+    try:
+        before = config.status_path.stat()
+        text = config.status_path.read_text(encoding="utf-8", errors="replace")
+        after = config.status_path.stat()
+    except FileNotFoundError:
+        return
+    # OpenVPN rewrites the snapshot in place. Never learn from a partial write.
+    if not text.rstrip().endswith("\nEND") or (
+        before.st_ino, before.st_mtime_ns, before.st_size
+    ) != (after.st_ino, after.st_mtime_ns, after.st_size):
+        return
+    observed_at = datetime.fromtimestamp(before.st_mtime, timezone.utc).isoformat()
+    previous = load_learned_addresses(config)
+    manager = PkiManager(config)
+    names = set(manager.index_entries())
+    names.update(path.stem for path in (config.pki_dir / "issued").glob("*.crt"))
+    names.discard("server")
+    learned = {name: record for name, record in previous.items() if name in names}
+    for name, session in _parse_status_text(text).items():
+        address = session["real_address"]
+        if name in names and _valid_endpoint(address) and (
+            name not in learned or observed_at > learned[name]["observed_at"]
+        ):
+            learned[name] = {"address": address, "observed_at": observed_at}
+    if learned == previous:
+        return
+    # A single background writer, atomic replacement, and owner-only metadata.
+    temporary = None
+    try:
+        with tempfile.NamedTemporaryFile(mode="w", encoding="utf-8", dir=config.runtime_dir, delete=False) as stream:
+            temporary = Path(stream.name)
+            json.dump(learned, stream, ensure_ascii=True)
+        os.replace(temporary, config.learned_addresses_path)
+    finally:
+        if temporary is not None:
+            temporary.unlink(missing_ok=True)

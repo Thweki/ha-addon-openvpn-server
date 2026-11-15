@@ -35,6 +35,30 @@ The add-on keeps running and retrying with backoff so the panel stays reachable,
 
 The panel's **Download diagnostics** produces a text bundle with the status payload, runtime details and the rendered `server.conf`. Attach it to bug reports; it does not contain private keys.
 
+## Last learned client endpoint
+
+Open **Open Web UI -> Clients -> Last public endpoint** to see the last observed
+source IP and port for each issued client, plus the status snapshot's UTC time.
+This helps identify a client's previous network even after it disconnects. The
+address is what the server sees (often a NAT gateway); it may be a private address
+for local connections. It is separate from the assigned VPN IP and online state.
+
+The background watcher samples the existing OpenVPN status file every five seconds,
+even with the panel closed. Allow `status_interval` (normally 30 seconds) plus one
+poll, then use **Refresh page data**. Connections shorter than the status interval
+may never be observed. A dash means no endpoint has been learned yet. With shared
+certificates (`duplicate_cn`), only one reported session's endpoint is retained
+per name; it cannot identify individual devices.
+
+Only the latest endpoint and observation time are kept per issued client, in
+`/data/openvpn/runtime/learned_addresses.json` (mode `0600`). Values survive
+disconnects and restarts; an old timestamp does not prove current connectivity.
+The panel, `openvpn-addon status`, and diagnostics expose these fields as
+`last_real_address` and `last_real_address_at`. Diagnostics therefore include
+retained source addresses. To clear this metadata, stop the add-on and remove
+`learned_addresses.json` and the old `openvpn-status.log`; new connections will
+be learned after startup. No new setting or OpenVPN hook is required.
+
 ## Files and paths
 
 - Client profiles: `/data/openvpn/exports/` (mode `0600`)
