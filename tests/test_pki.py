@@ -2,6 +2,7 @@ import json
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 import openvpn_addon.config as config_module
 from openvpn_addon.config import AddonConfig
@@ -41,6 +42,53 @@ class ClientAddressTests(unittest.TestCase):
         self.pki.ensure_client_ips(["alice"])
         reassigned = self.pki.ensure_client_ips(["alice", "carol"])
         self.assertEqual("10.8.0.3", reassigned["carol"])
+
+    def test_unchanged_ccd_files_are_not_rewritten(self):
+        names = [f"client-{number}" for number in range(100)]
+        expected = self.pki.ensure_client_ips(names)
+        with patch.object(Path, "write_text", autospec=True, side_effect=Path.write_text) as write:
+            self.assertEqual(expected, self.pki.ensure_client_ips(names))
+        self.assertEqual([self.config.client_ips_path], [call.args[0] for call in write.call_args_list])
+
+    def test_adding_a_client_only_writes_its_ccd_file(self):
+        self.pki.ensure_client_ips(["alice"])
+        with patch.object(Path, "write_text", autospec=True, side_effect=Path.write_text) as write:
+            assignments = self.pki.ensure_client_ips(["alice", "bob"])
+        self.assertEqual(
+            [self.config.client_ips_path, self.config.ccd_dir / "bob"],
+            [call.args[0] for call in write.call_args_list],
+        )
+        self.assertEqual("10.8.0.3", assignments["bob"])
+        self.assertEqual("ifconfig-push 10.8.0.3 255.255.255.0\n", (self.config.ccd_dir / "bob").read_text())
+
+    def test_sync_restores_missing_or_modified_ccd_files(self):
+        self.pki.ensure_client_ips(["alice", "bob"])
+        (self.config.ccd_dir / "alice").unlink()
+        (self.config.ccd_dir / "bob").write_bytes(b"\xff")
+        self.pki.ensure_client_ips(["alice", "bob"])
+        for name, address in [("alice", "10.8.0.2"), ("bob", "10.8.0.3")]:
+            self.assertEqual(
+                f"ifconfig-push {address} 255.255.255.0\n",
+                (self.config.ccd_dir / name).read_text(),
+            )
+
+    def test_netmask_change_updates_ccd_files(self):
+        self.pki.ensure_client_ips(["alice"])
+        self.config.vpn_netmask = "255.255.255.128"
+        self.pki.ensure_client_ips(["alice"])
+        self.assertEqual(
+            "ifconfig-push 10.8.0.2 255.255.255.128\n",
+            (self.config.ccd_dir / "alice").read_text(),
+        )
+
+    def test_unreadable_ccd_file_still_gets_a_write_attempt(self):
+        self.pki.ensure_client_ips(["alice"])
+        with (
+            patch.object(Path, "read_bytes", side_effect=PermissionError),
+            patch.object(Path, "write_text", autospec=True, side_effect=Path.write_text) as write,
+        ):
+            self.pki.ensure_client_ips(["alice"])
+        self.assertIn(self.config.ccd_dir / "alice", [call.args[0] for call in write.call_args_list])
 
     def test_shared_certificate_mode_skips_ccd(self):
         self.pki.ensure_client_ips(["alice"])
