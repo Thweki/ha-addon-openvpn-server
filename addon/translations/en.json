@@ -18,6 +18,18 @@
       "name": "Transport protocol",
       "description": "UDP is faster and is the recommended default. Choose TCP only if your network blocks UDP."
     },
+    "experimental_client_http_proxy": {
+      "name": "Experimental: connect clients through an HTTP proxy",
+      "description": "Off by default. Adds an HTTP CONNECT proxy to exported profiles. Requires TCP and a proxy without authentication. Restart, then download and re-import profiles."
+    },
+    "client_http_proxy_host": {
+      "name": "Client HTTP proxy host",
+      "description": "Proxy reachable from the client network: IPv4 address or DNS name only, without a URL scheme, port or credentials. Used only when the experimental proxy option is on."
+    },
+    "client_http_proxy_port": {
+      "name": "Client HTTP proxy port",
+      "description": "Proxy listening port (default 8080). Used only when the experimental proxy option is on."
+    },
     "lan_networks": {
       "name": "Home LAN networks",
       "description": "Subnets VPN clients should reach, comma separated, for example 192.168.1.0/24."

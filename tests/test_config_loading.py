@@ -48,6 +48,25 @@ class ConfigLoadingTests(unittest.TestCase):
         config = self.load({"nat_enabled": True, "legacy_knob": "x", "another": 1})
         self.assertEqual(["another", "legacy_knob"], config.unknown_options)
 
+    def test_client_http_proxy_defaults_off(self):
+        config = self.load({})
+        self.assertFalse(config.experimental_client_http_proxy)
+        self.assertEqual("", config.client_http_proxy_host)
+        self.assertEqual(8080, config.client_http_proxy_port)
+
+    def test_client_http_proxy_options_are_loaded_and_coerced(self):
+        for enabled, expected in [("true", True), ("false", False)]:
+            with self.subTest(enabled=enabled):
+                config = self.load({
+                    "experimental_client_http_proxy": enabled,
+                    "client_http_proxy_host": "proxy.example.com",
+                    "client_http_proxy_port": "3128",
+                })
+                self.assertIs(expected, config.experimental_client_http_proxy)
+                self.assertEqual("proxy.example.com", config.client_http_proxy_host)
+                self.assertEqual(3128, config.client_http_proxy_port)
+                self.assertEqual([], config.unknown_options)
+
     def test_scalar_types_are_coerced(self):
         config = self.load(
             {

@@ -5,6 +5,37 @@ Full repository documentation:
 - [README.md](https://github.com/Thweki/ha-addon-openvpn-server/blob/main/README.md)
 - [README.zh-CN.md](https://github.com/Thweki/ha-addon-openvpn-server/blob/main/README.zh-CN.md)
 
+## Experimental client HTTP proxy
+
+For client networks that require an HTTP CONNECT proxy, exported profiles can
+connect to your VPN through that proxy. This feature is **off by default** and
+supports proxies without authentication. The client app must support OpenVPN's
+[`http-proxy` directive](https://openvpn.net/community-docs/community-articles/openvpn-2-6-manual/).
+
+```yaml
+protocol: tcp
+experimental_client_http_proxy: true
+client_http_proxy_host: proxy.example.com
+client_http_proxy_port: 8080
+```
+
+Use a proxy address reachable from the client network, not from Home Assistant.
+The host must be a bare IPv4 address or DNS name, without a scheme, port, path or
+credentials. The proxy must allow CONNECT to your `public_endpoint` and
+`public_port`. Those fields still identify the VPN server, not the proxy.
+
+Save the options and restart the add-on, then download and re-import each client
+profile (or re-export with `openvpn-addon client export NAME`). Changing the
+protocol to TCP also requires TCP forwarding on your router and updated profiles
+on existing clients. The proxy option applies to every newly rendered profile;
+already imported profiles are not updated automatically. Certificate-role
+verification and TLS protection remain in place.
+
+To return to direct connections, set `experimental_client_http_proxy: false`,
+restart, and download and re-import profiles again. Retained proxy host/port
+values have no effect while disabled. This does not configure a proxy for
+Home Assistant's own traffic.
+
 ## Troubleshooting
 
 Start with **Open Web UI -> Health**. Every check below is reported there together with the reason.

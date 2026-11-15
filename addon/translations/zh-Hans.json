@@ -18,6 +18,18 @@
       "name": "传输协议",
       "description": "UDP 更快，推荐默认使用。只有网络封锁 UDP 时才选 TCP。"
     },
+    "experimental_client_http_proxy": {
+      "name": "实验性：客户端通过 HTTP 代理连接",
+      "description": "默认关闭。在导出的配置中添加 HTTP CONNECT 代理。需要 TCP 和无需认证的代理。重启后重新下载并导入客户端配置。"
+    },
+    "client_http_proxy_host": {
+      "name": "客户端 HTTP 代理主机",
+      "description": "客户端网络可访问的代理，仅支持 IPv4 地址或域名，不含 URL 协议头、端口或凭据。仅在启用实验性代理选项时使用。"
+    },
+    "client_http_proxy_port": {
+      "name": "客户端 HTTP 代理端口",
+      "description": "代理监听端口（默认 8080）。仅在启用实验性代理选项时使用。"
+    },
     "lan_networks": {
       "name": "家庭内网网段",
       "description": "客户端需要访问的内网段，多个用逗号分隔，例如 192.168.1.0/24。"

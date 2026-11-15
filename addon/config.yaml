@@ -30,6 +30,9 @@ options:
   listen_port: 1194
   public_port: 1194
   protocol: "udp"
+  experimental_client_http_proxy: false
+  client_http_proxy_host: ""
+  client_http_proxy_port: 8080
   lan_networks: ""
   nat_enabled: true
   redirect_gateway: false
@@ -58,6 +61,9 @@ schema:
   listen_port: port
   public_port: port
   protocol: list(udp|tcp)
+  experimental_client_http_proxy: bool
+  client_http_proxy_host: str?
+  client_http_proxy_port: port
   lan_networks: str?
   nat_enabled: bool
   redirect_gateway: bool
