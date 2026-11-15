@@ -131,6 +131,38 @@ openvpn-addon client revoke iphone
 openvpn-addon client list
 ```
 
+### Replace a client certificate and key
+
+For an expired certificate or a replacement device, run inside the add-on container:
+
+```bash
+openvpn-addon client replace iphone iphone-2026
+```
+
+This issues a fresh certificate and private key under the unused name `iphone-2026`,
+using `client_expire_days`, and exports its profile (including the optional `/share`
+copy) **before** revoking `iphone` and rebuilding the CRL. Already-revoked clients
+can also be replaced; their old credentials stay revoked. The old exported profiles
+are removed only after the CRL succeeds. Download/import the new profile and restart
+OpenVPN from the panel to disconnect existing sessions. With `duplicate_cn`, all
+devices using the old profile need the replacement. Fixed addresses are reconciled;
+the replacement is not guaranteed to retain the old VPN address.
+
+The destination must have no existing certificate, key, request, or exported profile.
+The server identity cannot be replaced. To replace the configured default client,
+first change `client_name` in add-on options to another identity: this version's
+startup otherwise reactivates that default certificate. Run client-management
+operations one at a time.
+
+Replacement is not a transaction. If issuance or export fails, the old certificate
+is not revoked, but the new identity may already exist. Inspect `client list`, fix
+the error, and use `client export iphone-2026` to finish exporting it, then
+`client revoke iphone` to retire the source. If revocation or CRL generation fails,
+both exports remain for recovery; check the source status and rebuild the CRL from
+the panel before restarting OpenVPN. After manual recovery, remove the old profile
+copies from `/data/openvpn/exports/` and, if present, `/share/openvpn_server/clients/`.
+Retrying `replace` with an existing destination is deliberately refused.
+
 ## Client Profiles
 
 Client profiles embed the client private key and are written with mode `0600`. Download them from the panel.

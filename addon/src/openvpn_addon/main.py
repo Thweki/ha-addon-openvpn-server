@@ -58,6 +58,11 @@ def build_parser() -> argparse.ArgumentParser:
     revoke.add_argument("name")
     revoke.set_defaults(func=cmd_client_revoke)
 
+    replace = client_sub.add_parser("replace", help="Issue a fresh identity, then retire the old client")
+    replace.add_argument("name", help="Existing client to retire")
+    replace.add_argument("replacement_name", help="Unused name for the new certificate and key")
+    replace.set_defaults(func=cmd_client_replace)
+
     export = client_sub.add_parser("export", help="Re-render a client .ovpn profile")
     export.add_argument("name")
     export.set_defaults(func=cmd_client_export)
@@ -180,6 +185,17 @@ def cmd_client_export(args: argparse.Namespace) -> int:
     result = export_client(config, args.name)
     print(f"Re-exported client profile: {args.name}", flush=True)
     print(f"Internal export path: {result.export_path}", flush=True)
+    return 0
+
+
+def cmd_client_replace(args: argparse.Namespace) -> int:
+    config = load_and_validate()
+    result = replace_client(config, PkiManager(config), args.name, args.replacement_name)
+    print(f"Replaced client {args.name} with {args.replacement_name}", flush=True)
+    print(f"Internal export path: {result.export_path}", flush=True)
+    if result.publish_path:
+        print(f"Published profile path: {result.publish_path}", flush=True)
+    print("Import the new profile on the device. Restart OpenVPN from the panel to end old sessions.", flush=True)
     return 0
 
 
@@ -463,6 +479,44 @@ def issue_client(config: AddonConfig, pki: PkiManager, name: str) -> dict[str, A
         "export_path": exported.export_path,
         "publish_path": exported.publish_path,
     }
+
+
+def replace_client(config: AddonConfig, pki: PkiManager, name: str, replacement_name: str) -> ExportResult:
+    """Export a fresh identity before retiring the source; never reactivate either name."""
+    for candidate in (name, replacement_name):
+        validate_client_name(candidate)
+        if candidate == "server":
+            raise ValueError("The server identity cannot be used for client replacement")
+    if name == replacement_name:
+        raise ValueError("Replacement requires a different, unused client name")
+    if name == config.client_name:
+        raise ValueError("Change client_name in add-on options before replacing the default client; "
+                         "startup would otherwise reactivate it")
+    entries = pki.index_entries()
+    if entries.get(name) not in {"V", "E", "R"}:
+        raise ValueError(f"No recognized certificate index entry for client: {name}")
+    artifacts = [
+        config.pki_dir / "issued" / f"{replacement_name}.crt",
+        config.pki_dir / "private" / f"{replacement_name}.key",
+        config.pki_dir / "reqs" / f"{replacement_name}.req",
+        config.exports_dir / f"{replacement_name}.ovpn",
+        config.share_exports_dir / f"{replacement_name}.ovpn",
+    ]
+    if replacement_name in entries or any(path.exists() or path.is_symlink() for path in artifacts):
+        raise ValueError(f"Replacement client name is already in use: {replacement_name}")
+    if config.public_address == "0.0.0.0":
+        raise ValueError("Set public_endpoint or a concrete server_host before replacing a client")
+
+    ensure_dirs(config)
+    pki.ensure_client(replacement_name)
+    exported = export_client(config, replacement_name)
+    if entries[name] == "R":
+        pki.refresh_crl()
+    else:
+        pki.revoke_client(name)
+    remove_profile(config, name)
+    sync_client_ips(config, pki)
+    return exported
 
 
 def export_client(config: AddonConfig, name: str) -> ExportResult:
