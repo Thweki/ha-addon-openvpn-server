@@ -131,6 +131,14 @@ openvpn-addon client revoke iphone
 openvpn-addon client list
 ```
 
+For a read-only audit export, use **Clients -> Inventory JSON / Inventory CSV**
+in the panel, or `openvpn-addon client inventory --format csv`. The export
+includes names, certificate serials, expiry and revocation dates, and certificate
+states, including retained certificate history. It reads no private keys or
+profiles and needs no additional configuration. See the
+[inventory documentation](addon/DOCS.md#client-certificate-inventory) for the JSON
+format and scope.
+
 ## Client Profiles
 
 Client profiles embed the client private key and are written with mode `0600`. Download them from the panel.

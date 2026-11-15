@@ -14,6 +14,7 @@ from typing import Any, Callable
 
 from .config import DATA_ROOT, AddonConfig, load_config
 from .health import collect_health, worst_status
+from .inventory import collect_inventory, render_inventory
 from .network import apply_network, ip_forward_enabled, remove_network
 from .pki import PkiManager
 from .renderer import effective_push_networks, render_client_config, render_server_config
@@ -64,6 +65,10 @@ def build_parser() -> argparse.ArgumentParser:
 
     list_parser = client_sub.add_parser("list", help="List issued client certificates")
     list_parser.set_defaults(func=cmd_client_list)
+
+    inventory = client_sub.add_parser("inventory", help="Export public certificate metadata without reading keys")
+    inventory.add_argument("--format", choices=("json", "csv"), default="json")
+    inventory.set_defaults(func=cmd_client_inventory)
     return parser
 
 
@@ -180,6 +185,17 @@ def cmd_client_export(args: argparse.Namespace) -> int:
     result = export_client(config, args.name)
     print(f"Re-exported client profile: {args.name}", flush=True)
     print(f"Internal export path: {result.export_path}", flush=True)
+    return 0
+
+
+def cmd_client_inventory(args: argparse.Namespace) -> int:
+    try:
+        inventory = collect_inventory(load_config().pki_dir)
+        output = render_inventory(inventory, args.format)
+    except (OSError, ValueError, TypeError):
+        print("Unable to read client inventory; check add-on settings and CA index.", file=sys.stderr)
+        return 1
+    print(output, end="")
     return 0
 
 

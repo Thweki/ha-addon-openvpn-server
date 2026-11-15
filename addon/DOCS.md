@@ -35,6 +35,42 @@ The add-on keeps running and retrying with backoff so the panel stays reachable,
 
 The panel's **Download diagnostics** produces a text bundle with the status payload, runtime details and the rendered `server.conf`. Attach it to bug reports; it does not contain private keys.
 
+## Client certificate inventory
+
+Use **Open Web UI -> Clients -> Inventory JSON / Inventory CSV** to download
+certificate metadata for audits or a spreadsheet. No setting or experimental
+flag is required. The same export is available inside the add-on container:
+
+```bash
+openvpn-addon client inventory > client-inventory.json
+openvpn-addon client inventory --format csv > client-inventory.csv
+```
+
+The panel routes are `GET api/clients/inventory.json` and
+`GET api/clients/inventory.csv`, relative to the panel's Ingress URL. Downloads
+use the existing panel access boundary and disable caching.
+
+Each record contains `name`, hexadecimal `serial`, `status`, `expires_at`, and
+`revoked_at`. Dates are UTC ISO 8601; an absent revocation date is `null` in JSON
+and empty in CSV. Import serials as text in a spreadsheet to preserve leading
+zeroes. JSON includes `schema_version: 1`, `generated_at`, and a `certificates`
+array; CSV always includes a header, even for an empty inventory.
+
+The export reads only `/data/openvpn/pki/index.txt`. It includes every retained
+client certificate record, sorted by name and serial, so a name can appear more
+than once after certificate replacement. The `server` certificate is excluded.
+Revoked certificates remain `revoked` even after expiry; other certificates are
+`expired` if marked expired by the CA or their expiry time has passed, otherwise
+`valid`. These are certificate states, not connection status or a check that a
+usable profile exists. Certificates absent from the index are not included.
+
+A missing index produces an empty inventory. Malformed records, unsupported
+subjects (the add-on uses `/CN=<client name>`), and unreadable files fail the
+export without returning a partial inventory or echoing file contents. The CLI
+returns a nonzero exit code and the panel returns HTTP 500 on failure. Neither
+export reads keys, `.ovpn` profiles, or session addresses, runs OpenSSL/EasyRSA,
+nor changes PKI state or restarts OpenVPN.
+
 ## Files and paths
 
 - Client profiles: `/data/openvpn/exports/` (mode `0600`)
