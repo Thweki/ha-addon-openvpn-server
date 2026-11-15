@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+- Add an optional `max_clients` limit for simultaneous VPN connections, with
+  validated add-on options and translated labels. Defaults to `0` (no override).
+
 ## 0.2.2
 
 ### Changed

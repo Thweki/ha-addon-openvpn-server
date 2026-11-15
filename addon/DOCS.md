@@ -5,6 +5,29 @@ Full repository documentation:
 - [README.md](https://github.com/Thweki/ha-addon-openvpn-server/blob/main/README.md)
 - [README.zh-CN.md](https://github.com/Thweki/ha-addon-openvpn-server/blob/main/README.zh-CN.md)
 
+## Concurrent client limit
+
+Use `max_clients` to bound simultaneous VPN connections on a resource-constrained
+Home Assistant host. For example, save this add-on option and restart the add-on:
+
+```yaml
+max_clients: 8
+```
+
+The add-on accepts whole numbers from `1` to `1024` and renders OpenVPN's native
+[`max-clients` directive](https://openvpn.net/community-docs/community-articles/openvpn-2-6-manual/).
+The default, `0`, omits the directive and preserves OpenVPN's existing default;
+it does not mean unlimited connections. Set it back to `0` and restart to remove
+the override. A restart interrupts current VPN sessions.
+
+The cap applies to simultaneous connections on both UDP and TCP, including
+separate sessions sharing a certificate when `duplicate_cn` is enabled. It does
+not limit how many certificates you can issue or reserve slots for named clients.
+Once the cap is reached, additional connections are refused until a slot is free.
+The VPN address pool can impose a lower limit; increasing `max_clients` does not
+enlarge the subnet or allocate more fixed addresses. Client profiles do not need
+to be re-exported.
+
 ## Troubleshooting
 
 Start with **Open Web UI -> Health**. Every check below is reported there together with the reason.

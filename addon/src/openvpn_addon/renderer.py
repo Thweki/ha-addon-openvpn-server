@@ -35,6 +35,7 @@ def render_server_config(config: AddonConfig) -> str:
         auth=config.auth,
         tls_version_min=TLS_VERSION_MIN,
         duplicate_cn=_bool_directive(config.duplicate_cn, "duplicate-cn"),
+        max_clients_line=f"max-clients {config.max_clients}" if config.max_clients else "",
         client_to_client=_bool_directive(config.client_to_client, "client-to-client"),
         redirect_gateway=_redirect_gateway(config.redirect_gateway),
         push_dns=_push_dns(config.dns_servers),

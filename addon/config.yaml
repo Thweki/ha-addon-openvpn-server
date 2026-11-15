@@ -42,6 +42,7 @@ options:
   tls_crypt: true
   client_to_client: false
   duplicate_cn: false
+  max_clients: 0
   fixed_client_ips: true
   publish_profiles_to_share: false
   crl_valid_days: 3650
@@ -70,6 +71,7 @@ schema:
   tls_crypt: bool
   client_to_client: bool
   duplicate_cn: bool
+  max_clients: int(0,1024)
   fixed_client_ips: bool
   publish_profiles_to_share: bool
   crl_valid_days: int
