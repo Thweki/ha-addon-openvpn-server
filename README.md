@@ -157,6 +157,22 @@ Outputs:
 
 Malformed request files are quarantined instead of stopping the add-on.
 
+## Profile integration check
+
+The `Profile credential validation` workflow checks exported profiles with OpenSSL
+on pull requests. Run the same check locally with Python and OpenSSL installed:
+
+```bash
+PYTHONPATH=addon/src python3 -B -m unittest discover -s tests/integration -v
+```
+
+The tests create temporary RSA and EC client credentials, export them through the
+shipped template, and verify the embedded certificate chain, client purpose, and
+private-key match in both internal and shared copies. They require no existing credentials,
+VPN service, network access, or root privileges. Temporary credentials are deleted
+after each test and are never printed. This checks profile credentials; it does not
+exercise EasyRSA, TLS negotiation, routing, or a running Home Assistant add-on.
+
 ## Notes
 
 - If `public_endpoint` is empty, client export is skipped.
