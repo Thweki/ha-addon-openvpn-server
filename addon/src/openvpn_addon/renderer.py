@@ -5,6 +5,7 @@ from pathlib import Path
 from string import Template
 
 from .config import AddonConfig
+from .validator import validated_client_iroutes
 
 
 TEMPLATES_DIR = Path("/opt/openvpn_server/templates")
@@ -39,6 +40,11 @@ def render_server_config(config: AddonConfig) -> str:
         redirect_gateway=_redirect_gateway(config.redirect_gateway),
         push_dns=_push_dns(config.dns_servers),
         push_routes=_format_push_routes(pushed_networks),
+        client_routes="\n".join(
+            f"route {network.network_address} {network.netmask}"
+            for networks in validated_client_iroutes(config).values()
+            for network in networks
+        ),
         inactive_timeout=_inactive_timeout(config.inactive_timeout),
         status_interval=config.status_interval,
         verb=_verb_level(config.log_level),

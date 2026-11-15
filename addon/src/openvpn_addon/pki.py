@@ -10,7 +10,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from .config import AddonConfig
-from .validator import validate_client_name
+from .validator import validate_client_name, validated_client_iroutes
 
 
 EASYRSA = Path("/usr/share/easy-rsa/easyrsa")
@@ -170,6 +170,7 @@ class PkiManager:
 
     def ensure_client_ips(self, names: list[str]) -> dict[str, str]:
         """Assign a stable VPN address to every client and write its ccd entry."""
+        iroutes = validated_client_iroutes(self.config)
         if not self.config.uses_client_config_dir or not names:
             self._clear_ccd()
             return {}
@@ -199,8 +200,12 @@ class PkiManager:
             if stale.name not in assignments:
                 stale.unlink()
         for name, address in assignments.items():
+            routes = "".join(
+                f"iroute {network.network_address} {network.netmask}\n"
+                for network in iroutes.get(name, [])
+            )
             (self.config.ccd_dir / name).write_text(
-                f"ifconfig-push {address} {self.config.vpn_netmask}\n",
+                f"ifconfig-push {address} {self.config.vpn_netmask}\n" + routes,
                 encoding="utf-8",
             )
         return assignments

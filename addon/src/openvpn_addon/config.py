@@ -34,6 +34,8 @@ class AddonConfig:
     client_to_client: bool = False
     duplicate_cn: bool = False
     fixed_client_ips: bool = True
+    experimental_client_overrides: bool = False
+    client_overrides: list[dict[str, str]] = field(default_factory=list)
     publish_profiles_to_share: bool = False
     crl_valid_days: int = 3650
     inactive_timeout: int = 0

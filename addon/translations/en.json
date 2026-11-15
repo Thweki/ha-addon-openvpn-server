@@ -70,6 +70,14 @@
       "name": "Assign fixed VPN addresses",
       "description": "Gives every client a stable VPN address, which makes router and firewall rules predictable. Only applies when certificates are not shared."
     },
+    "experimental_client_overrides": {
+      "name": "Experimental per-client network overrides",
+      "description": "Off by default. Assign remote IPv4 networks to individual client routers. Requires tun, fixed VPN addresses and separate certificates. Restart the add-on after changes."
+    },
+    "client_overrides": {
+      "name": "Client network overrides",
+      "description": "List of client_name and iroutes entries. iroutes is a comma-separated IPv4 CIDR string, for example 192.168.50.0/24. Only used when experimental per-client overrides are enabled. See the documentation for remote forwarding and return routes."
+    },
     "publish_profiles_to_share": {
       "name": "Also copy client profiles to /share",
       "description": "Off by default. The exported .ovpn contains the client private key and /share is readable by other add-ons; download profiles from the add-on panel instead."

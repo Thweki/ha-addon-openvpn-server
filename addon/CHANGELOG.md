@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+- Experimental per-client CCD overrides assign IPv4 networks behind a client router
+  using `iroute` plus matching server routes. Enable `experimental_client_overrides`
+  (default off) and configure `client_overrides`; fixed VPN addresses are preserved.
+
 ## 0.2.2
 
 ### Changed
