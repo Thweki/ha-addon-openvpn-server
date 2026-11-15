@@ -1,14 +1,32 @@
+import errno
+import http.client
+import io
 import json
 import tempfile
 import unittest
-import urllib.error
 import urllib.request
 from pathlib import Path
+from unittest.mock import patch
 
 import openvpn_addon.config as config_module
 from openvpn_addon.config import AddonConfig
+from openvpn_addon.network import NetworkResult
 from openvpn_addon.validator import validate_client_name
-from openvpn_addon.webui import PanelActions, PanelServer, _match_client_route
+from openvpn_addon.webui import PanelActions, PanelServer, _build_handler, _match_client_route
+
+
+class MemorySocket:
+    """The stream interface used by http.server and http.client, without a socket."""
+
+    def __init__(self, incoming):
+        self.incoming = incoming
+        self.outgoing = bytearray()
+
+    def makefile(self, mode, *args):
+        return io.BytesIO(self.incoming)
+
+    def sendall(self, data):
+        self.outgoing.extend(data)
 
 
 class RouteTests(unittest.TestCase):
@@ -36,6 +54,11 @@ class PanelTests(unittest.TestCase):
 
         self.config = AddonConfig(server_host="192.168.1.6", public_endpoint="vpn.example.com")
         self.config.runtime_dir.mkdir(parents=True, exist_ok=True)
+        # Status/diagnostics must not inspect the host's routes or firewall.
+        snapshot = NetworkResult(applied=True, ip_forward=True, out_interface="enp1s0")
+        for target in ("openvpn_addon.health.verify_network", "openvpn_addon.status.verify_network"):
+            self.enterContext(patch(target, return_value=snapshot))
+        self.enterContext(patch("openvpn_addon.status.ip_forward_enabled", return_value=True))
         self.issued: list[str] = []
 
         def issue(name):
@@ -52,7 +75,7 @@ class PanelTests(unittest.TestCase):
                 raise ValueError("unknown client: ghost")
             return "client\nremote vpn.example.com 1194\n"
 
-        actions = PanelActions(
+        self.actions = PanelActions(
             issue_client=issue,
             revoke_client=revoke,
             export_profile=profile,
@@ -60,22 +83,22 @@ class PanelTests(unittest.TestCase):
             restart_openvpn=lambda: {"status": "ok", "message": "restarted"},
             runtime_info=lambda: {"openvpn_running": True},
         )
-        self.panel = PanelServer(self.config, actions, "127.0.0.1", 0)
-        self.panel.start()
-        self.addCleanup(self.panel.stop)
-        self.base = f"http://127.0.0.1:{self.panel.address[1]}"
+        self.handler = _build_handler(self.config, self.actions)
 
-    def request(self, path, payload=None, method=None):
-        data = None if payload is None else json.dumps(payload).encode("utf-8")
-        request = urllib.request.Request(self.base + path, data=data, method=method)
-        try:
-            with urllib.request.urlopen(request, timeout=10) as response:
-                return response.status, response.read().decode("utf-8"), dict(response.headers)
-        except urllib.error.HTTPError as error:
-            try:
-                return error.code, error.read().decode("utf-8"), dict(error.headers)
-            finally:
-                error.close()
+    def request(self, path, payload=None, method=None, raw_body=None):
+        data = raw_body if raw_body is not None else (
+            b"" if payload is None else json.dumps(payload).encode("utf-8")
+        )
+        method = method or ("GET" if payload is None else "POST")
+        headers = (
+            f"{method} {path} HTTP/1.0\r\n"
+            f"Host: localhost\r\nContent-Length: {len(data)}\r\n\r\n"
+        ).encode("ascii")
+        connection = MemorySocket(headers + data)
+        self.handler(connection, ("127.0.0.1", 12345), None)
+        with http.client.HTTPResponse(MemorySocket(bytes(connection.outgoing))) as response:
+            response.begin()
+            return response.status, response.read().decode("utf-8"), dict(response.headers)
 
     def test_status_endpoint(self):
         status, body, _ = self.request("/api/status")
@@ -99,10 +122,9 @@ class PanelTests(unittest.TestCase):
         self.assertIn("error", json.loads(body)["status"])
 
     def test_invalid_json_body_is_a_bad_request(self):
-        request = urllib.request.Request(self.base + "/api/clients", data=b"{nope", method="POST")
-        with self.assertRaises(urllib.error.HTTPError) as context:
-            urllib.request.urlopen(request, timeout=10)
-        self.assertEqual(400, context.exception.code)
+        status, body, _ = self.request("/api/clients", raw_body=b"{nope", method="POST")
+        self.assertEqual(400, status)
+        self.assertIn("invalid JSON", json.loads(body)["message"])
 
     def test_profile_download(self):
         status, body, headers = self.request("/api/clients/alice/profile")
@@ -134,6 +156,21 @@ class PanelTests(unittest.TestCase):
     def test_unknown_path_is_not_found(self):
         status, _, _ = self.request("/api/nope")
         self.assertEqual(404, status)
+
+    def test_server_serves_http_over_loopback(self):
+        try:
+            panel = PanelServer(self.config, self.actions, "127.0.0.1", 0)
+        except OSError as error:
+            if error.errno in (errno.EPERM, errno.EACCES):
+                self.skipTest(f"sandbox denies loopback sockets: {error}")
+            raise
+        panel.start()
+        self.addCleanup(panel.stop)
+        # Ignore proxy environment variables for this local integration check.
+        opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))
+        with opener.open(f"http://127.0.0.1:{panel.address[1]}/api/status", timeout=10) as response:
+            self.assertEqual(200, response.status)
+            self.assertEqual("vpn.example.com:1194", json.load(response)["summary"]["public_address"])
 
 
 class PanelBindingTests(unittest.TestCase):

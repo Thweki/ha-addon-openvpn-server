@@ -4,6 +4,30 @@ OpenVPN server add-on for `Home Assistant OS`.
 
 Chinese documentation: [README.zh-CN.md](README.zh-CN.md)
 
+## Development checks
+
+Run the standard-library test suite from the repository root with Python 3.13:
+
+```bash
+PYTHONPATH=addon/src python3 -m unittest discover -s tests -v
+```
+
+Tests use temporary files and fake networking commands, so they need no root,
+host `sysctl`, OpenVPN, or firewall access. Panel endpoint tests use in-memory
+HTTP streams. A separate loopback HTTP smoke test runs when sockets are allowed;
+it skips only if socket creation or binding is denied with `EPERM` or `EACCES`.
+
+For the same focused lint used in CI:
+
+```bash
+python3 -m venv /tmp/openvpn-addon-dev
+/tmp/openvpn-addon-dev/bin/python -m pip install -r requirements-dev.txt
+/tmp/openvpn-addon-dev/bin/python -m ruff check --select E9,F63,F7,F82 addon/src tests
+```
+
+The validation workflow runs tests and lint on pull requests and pushes with
+`contents: read` permissions. The existing image builder workflow is unchanged.
+
 ## Overview
 
 This repository provides a Home Assistant Add-on that:

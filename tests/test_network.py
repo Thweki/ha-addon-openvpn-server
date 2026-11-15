@@ -2,6 +2,7 @@ import os
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 from openvpn_addon import network
 
@@ -27,6 +28,11 @@ esac
 exit 1
 """
 
+FAKE_SYSCTL = """#!/bin/sh
+echo "$@" >> "$SYSCTL_LOG"
+exit 1
+"""
+
 
 class NetworkTests(unittest.TestCase):
     def setUp(self):
@@ -37,8 +43,10 @@ class NetworkTests(unittest.TestCase):
         self.bin = root / "bin"
         self.bin.mkdir()
         self.log = root / "iptables.log"
+        self.sysctl_log = root / "sysctl.log"
         self._write_script("iptables", FAKE_IPTABLES)
         self._write_script("ip", FAKE_IP)
+        self._write_script("sysctl", FAKE_SYSCTL)
 
         self.ip_forward = root / "ip_forward"
         self.ip_forward.write_text("1\n", encoding="utf-8")
@@ -46,10 +54,13 @@ class NetworkTests(unittest.TestCase):
         network.IP_FORWARD_PATH = self.ip_forward
         self.addCleanup(setattr, network, "IP_FORWARD_PATH", original_path)
 
-        original_env = os.environ.get("PATH", "")
-        os.environ["PATH"] = f"{self.bin}{os.pathsep}{original_env}"
-        os.environ["IPTABLES_LOG"] = str(self.log)
-        self.addCleanup(os.environ.__setitem__, "PATH", original_env)
+        # Only test executables are reachable; never run host networking tools.
+        self.enterContext(patch.dict(os.environ, {
+            "PATH": str(self.bin),
+            "IPTABLES_LOG": str(self.log),
+            "SYSCTL_LOG": str(self.sysctl_log),
+            "TEST_IP_FORWARD_PATH": str(self.ip_forward),
+        }))
 
         from openvpn_addon.config import AddonConfig
 
@@ -76,6 +87,7 @@ class NetworkTests(unittest.TestCase):
         self.assertIn("-A OPENVPN_ADDON -i tun0 -s 10.8.0.0/24 -j ACCEPT", calls)
         self.assertIn("-t nat -A POSTROUTING -j OPENVPN_ADDON", calls)
         self.assertIn("-t filter -A FORWARD -j OPENVPN_ADDON", calls)
+        self.assertFalse(self.sysctl_log.exists())
 
     def test_disabled_nat_reports_a_warning_and_touches_nothing(self):
         self.config.nat_enabled = False
@@ -98,6 +110,17 @@ class NetworkTests(unittest.TestCase):
         result = network.apply_network(self.config)
         self.assertFalse(result.ip_forward)
         self.assertTrue(any("ip_forward" in error for error in result.errors))
+        self.assertEqual("-w net.ipv4.ip_forward=1\n", self.sysctl_log.read_text(encoding="utf-8"))
+        self.assertEqual("0\n", self.ip_forward.read_text(encoding="utf-8"))
+
+    def test_ip_forward_can_be_enabled_without_touching_the_host(self):
+        self.ip_forward.write_text("0\n", encoding="utf-8")
+        self._write_script("sysctl", '''#!/bin/sh
+echo "1" > "$TEST_IP_FORWARD_PATH"
+''')
+        result = network.apply_network(self.config)
+        self.assertTrue(result.ok, result.errors)
+        self.assertEqual("1\n", self.ip_forward.read_text(encoding="utf-8"))
 
 
 if __name__ == "__main__":
