@@ -13,6 +13,7 @@ from pathlib import Path
 from typing import Any, Callable
 
 from .config import DATA_ROOT, AddonConfig, load_config
+from .crl_preview import preview_crl_renewal
 from .health import collect_health, worst_status
 from .network import apply_network, ip_forward_enabled, remove_network
 from .pki import PkiManager
@@ -42,6 +43,14 @@ def build_parser() -> argparse.ArgumentParser:
     _command(subparsers, "init", cmd_init)
     _command(subparsers, "run", cmd_run)
     _command(subparsers, "status", cmd_status)
+
+    preview = subparsers.add_parser(
+        "crl-renew-preview", help="Preview CRL auto-renewal policy without changing PKI state"
+    )
+    preview.add_argument(
+        "--experimental", action="store_true", help="Opt in to the experimental read-only preview"
+    )
+    preview.set_defaults(func=cmd_crl_renew_preview)
 
     client = subparsers.add_parser("client", help="Manage OpenVPN client certificates and exports")
     client_sub = client.add_subparsers(dest="client_command", required=True)
@@ -144,6 +153,21 @@ def cmd_status(_: argparse.Namespace) -> int:
     config = load_and_validate()
     print(status_json(config))
     return 0
+
+
+def cmd_crl_renew_preview(args: argparse.Namespace) -> int:
+    if not args.experimental:
+        print("Experimental CRL preview is disabled; pass --experimental to opt in.", file=sys.stderr)
+        return 2
+    try:
+        config = load_config()
+    except (OSError, ValueError):
+        # Do not echo option values or file contents in diagnostics.
+        print("Cannot load add-on options for CRL preview.", file=sys.stderr)
+        return 2
+    result = preview_crl_renewal(config, experimental=True)
+    print(json.dumps(result, indent=2, sort_keys=True))
+    return 2 if result["action"] == "blocked" else 0
 
 
 def cmd_client_create(args: argparse.Namespace) -> int:
