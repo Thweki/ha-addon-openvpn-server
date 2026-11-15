@@ -168,6 +168,7 @@ def cmd_client_revoke(args: argparse.Namespace) -> int:
     pki = PkiManager(config)
     pki.revoke_client(args.name)
     sync_client_ips(config, pki)
+    remove_profile(config, args.name)
     print(f"Revoked client: {args.name}", flush=True)
     print("Restart the add-on (or use the panel) so OpenVPN reloads the revocation list.", flush=True)
     return 0
@@ -338,6 +339,7 @@ def start_panel(
         pki.revoke_client(name)
         sync_client_ips(config, pki)
         outcome = supervisor.restart("certificate revoked") if supervisor.is_running() else {"status": "ok"}
+        remove_profile(config, name)
         return {"status": "ok", "client_name": name, "message": outcome.get("message", "revoked")}
 
     def export_profile(name: str) -> str:
