@@ -35,6 +35,38 @@ The add-on keeps running and retrying with backoff so the panel stays reachable,
 
 The panel's **Download diagnostics** produces a text bundle with the status payload, runtime details and the rendered `server.conf`. Attach it to bug reports; it does not contain private keys.
 
+### MTU, MSS and fragmentation report
+
+Inside the add-on container, run:
+
+```sh
+openvpn-addon mtu
+```
+
+This read-only JSON report helps investigate tunnels that connect but stall during
+transfers. It lists explicit `tun-mtu`, `tun-mtu-extra`, `link-mtu`, `mssfix`,
+`fragment` and `max-packet-size` occurrences from the existing runtime `server.conf`,
+separating server settings from global `push` statements and preserving line numbers
+and repeated values. For example, `mssfix 1300 mtu` becomes
+`{"line": 12, "arguments": [1300, "mtu"]}` under `settings.server.mssfix`.
+
+Empty lists mean no explicit setting, not zero or disabled. The shipped template
+currently has no explicit overrides. Bare `mssfix` has an empty argument list;
+`mssfix 0` has `[0]`. Defaults, implicit settings, include files, per-client
+overrides and client acceptance are not resolved. This is disk configuration,
+not a measurement of path MTU or confirmation of running settings. Syntax is
+recognized using the [OpenVPN 2.6 link options](https://github.com/OpenVPN/openvpn/blob/release/2.6/doc/man-sections/link-options.rst);
+the command does not validate compatibility or recommend a packet size.
+
+Only recognized numeric arguments and mode keywords are included. Inline blocks
+are skipped, and keys, profiles and referenced files are never opened. The command
+does not load add-on options, initialize state, send probes or change settings.
+Missing, unreadable, non-UTF-8 and symlinked runtime files are reported safely.
+Exit status is `0` for a complete inventory within this scope, `1` for warnings
+(such as repeated or malformed directives or unevaluated includes), and `2` when
+the server configuration cannot be read. Read `warnings` and `notes` before
+interpreting an empty or incomplete report.
+
 ## Files and paths
 
 - Client profiles: `/data/openvpn/exports/` (mode `0600`)
