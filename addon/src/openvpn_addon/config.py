@@ -37,6 +37,8 @@ class AddonConfig:
     publish_profiles_to_share: bool = False
     crl_valid_days: int = 3650
     inactive_timeout: int = 0
+    experimental_client_idle: bool = False
+    client_idle_policies: list[dict[str, object]] = field(default_factory=list)
     keepalive: str = "10 120"
     log_level: str = "info"
     status_interval: int = 30
@@ -143,6 +145,9 @@ def load_config(path: Path | None = None) -> AddonConfig:
 
 def _normalize_payload(payload: dict[str, object]) -> dict[str, object]:
     normalized = dict(payload)
+    # Disconnect policies require explicit opt-in, not generic truthiness coercion.
+    if "experimental_client_idle" in normalized and type(normalized["experimental_client_idle"]) is not bool:
+        raise ValueError("experimental_client_idle must be a boolean")
     normalized["dns_servers"] = _parse_list_option(
         normalized.pop("dns", None),
         fallback=normalized.pop("dns_servers", None),

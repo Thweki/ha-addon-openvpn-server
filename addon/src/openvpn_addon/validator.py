@@ -45,6 +45,8 @@ def validate_config(config: AddonConfig) -> None:
     if config.inactive_timeout < 0:
         raise ValueError("inactive_timeout must be >= 0")
 
+    validated_idle_policies(config)
+
     if config.status_interval <= 0:
         raise ValueError("status_interval must be > 0")
 
@@ -65,6 +67,39 @@ def validate_config(config: AddonConfig) -> None:
             )
 
 
+def validated_idle_policies(config: AddonConfig) -> dict[str, tuple[int, int]]:
+    """Return enabled client timers, validating before any runtime files are written."""
+    if type(config.experimental_client_idle) is not bool:
+        raise ValueError("experimental_client_idle must be a boolean")
+    if not config.experimental_client_idle:
+        return {}
+    if not config.uses_client_config_dir:
+        raise ValueError("experimental_client_idle requires fixed_client_ips=true and duplicate_cn=false")
+    if not isinstance(config.client_idle_policies, list):
+        raise ValueError("client_idle_policies must be a list")
+
+    policies: dict[str, tuple[int, int]] = {}
+    for entry in config.client_idle_policies:
+        if not isinstance(entry, dict) or not {"client", "timeout"} <= entry.keys():
+            raise ValueError("Each client_idle_policies entry requires client and timeout")
+        if entry.keys() - {"client", "timeout", "min_bytes"}:
+            raise ValueError("Unknown field in client_idle_policies")
+        name = entry["client"]
+        if not isinstance(name, str) or not CLIENT_NAME_RE.fullmatch(name) or name in {"DEFAULT", "server"}:
+            raise ValueError("client_idle_policies requires a non-reserved client certificate name")
+        if name in policies:
+            raise ValueError("client_idle_policies contains a duplicate client")
+        seconds = entry["timeout"]
+        min_bytes = entry.get("min_bytes", 0)
+        for value in (seconds, min_bytes):
+            if type(value) is not int or not 0 <= value <= 2147483647:
+                raise ValueError("Idle timeout and min_bytes must be integers between 0 and 2147483647")
+        if seconds == 0 and min_bytes:
+            raise ValueError("Idle min_bytes requires a positive timeout")
+        policies[name] = (seconds, min_bytes)
+    return policies
+
+
 def validate_client_name(name: str) -> None:
     if not CLIENT_NAME_RE.match(name):
         raise ValueError(
@@ -75,6 +110,12 @@ def validate_client_name(name: str) -> None:
 
 def config_warnings(config: AddonConfig) -> list[str]:
     warnings: list[str] = []
+
+    if config.experimental_client_idle:
+        warnings.append(
+            "EXPERIMENTAL: per-client idle policies are enabled; selected clients may be "
+            "disconnected for inactivity or low traffic. Client apps may reconnect automatically."
+        )
 
     for option in config.unknown_options:
         warnings.append(

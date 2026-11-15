@@ -90,6 +90,14 @@
       "name": "Disconnect idle clients after (seconds)",
       "description": "0 keeps idle clients connected."
     },
+    "experimental_client_idle": {
+      "name": "Experimental: per-client idle policies",
+      "description": "Off by default. Apply client_idle_policies on connection. Requires fixed_client_ips on and duplicate_cn off. Restart the add-on after changing policies."
+    },
+    "client_idle_policies": {
+      "name": "Experimental idle policies",
+      "description": "List of client certificate names with timeout in seconds and optional min_bytes per interval. Timeout 0 exempts a client from the global idle timeout. Only used when experimental_client_idle is on; see Documentation for examples."
+    },
     "keepalive": {
       "name": "Keepalive ping/restart",
       "description": "Two values, for example '10 120'."

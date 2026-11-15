@@ -90,6 +90,14 @@
       "name": "空闲多久断开（秒）",
       "description": "0 表示不主动断开空闲客户端。"
     },
+    "experimental_client_idle": {
+      "name": "实验性：按客户端设置空闲策略",
+      "description": "默认关闭。连接时应用 client_idle_policies。需要开启 fixed_client_ips 并关闭 duplicate_cn。修改策略后请重启插件。"
+    },
+    "client_idle_policies": {
+      "name": "实验性空闲策略",
+      "description": "列表中填写客户端证书名称、超时秒数 timeout，以及可选的每个周期最低流量 min_bytes。timeout 为 0 时不受全局空闲超时限制。仅在 experimental_client_idle 开启时生效；示例请参阅文档。"
+    },
     "keepalive": {
       "name": "Keepalive 参数",
       "description": "两个值，例如 '10 120'。"
