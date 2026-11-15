@@ -36,6 +36,7 @@ class AddonConfig:
     fixed_client_ips: bool = True
     publish_profiles_to_share: bool = False
     crl_valid_days: int = 3650
+    experimental_crl_auto_renew: bool = False
     inactive_timeout: int = 0
     keepalive: str = "10 120"
     log_level: str = "info"
@@ -143,6 +144,11 @@ def load_config(path: Path | None = None) -> AddonConfig:
 
 def _normalize_payload(payload: dict[str, object]) -> dict[str, object]:
     normalized = dict(payload)
+    # Experimental PKI writes require an explicit boolean opt-in, never truthiness.
+    if "experimental_crl_auto_renew" in normalized and not isinstance(
+        normalized["experimental_crl_auto_renew"], bool
+    ):
+        raise ValueError("experimental_crl_auto_renew must be a boolean")
     normalized["dns_servers"] = _parse_list_option(
         normalized.pop("dns", None),
         fallback=normalized.pop("dns_servers", None),

@@ -45,6 +45,7 @@ options:
   fixed_client_ips: true
   publish_profiles_to_share: false
   crl_valid_days: 3650
+  experimental_crl_auto_renew: false
   server_host: "0.0.0.0"
   extra_routes: ""
   inactive_timeout: 0
@@ -73,6 +74,7 @@ schema:
   fixed_client_ips: bool
   publish_profiles_to_share: bool
   crl_valid_days: int
+  experimental_crl_auto_renew: bool
   server_host: str
   extra_routes: str?
   inactive_timeout: int

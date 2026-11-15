@@ -13,6 +13,7 @@ from pathlib import Path
 from typing import Any, Callable
 
 from .config import DATA_ROOT, AddonConfig, load_config
+from .crl_renewal import CrlRenewalSchedule
 from .health import collect_health, worst_status
 from .network import apply_network, ip_forward_enabled, remove_network
 from .pki import PkiManager
@@ -304,10 +305,15 @@ class RequestWatcher(threading.Thread):
         super().__init__(name="request-watcher", daemon=True)
         self.config = config
         self.stop_event = stop_event
+        self.crl_renewal = (
+            CrlRenewalSchedule(config) if config.experimental_crl_auto_renew is True else None
+        )
         self.start()
 
     def run(self) -> None:
         while not self.stop_event.wait(REQUEST_POLL_SECONDS):
+            if self.crl_renewal is not None:
+                self.crl_renewal.tick()
             try:
                 process_pending_requests(self.config)
             except Exception as error:  # noqa: BLE001 - the watcher must never die

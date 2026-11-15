@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+- Experimental, opt-in `experimental_crl_auto_renew` checks the revocation list
+  hourly and renews it near expiry without restarting OpenVPN or changing client
+  credentials. Disabled by default; see DOCS.md for activation and limitations.
+
 ## 0.2.2
 
 ### Changed

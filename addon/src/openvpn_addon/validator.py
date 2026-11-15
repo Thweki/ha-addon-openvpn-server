@@ -128,7 +128,13 @@ def config_warnings(config: AddonConfig) -> list[str]:
                 "for example 192.168.1.0/24."
             )
 
-    if config.crl_valid_days < CRL_REBUILD_WARNING_DAYS:
+    if config.experimental_crl_auto_renew:
+        warnings.append(
+            "Experimental CRL auto-renewal is enabled: hourly checks renew the revocation list "
+            "near expiry. Monitor CRL health for renewal failures."
+        )
+
+    if config.crl_valid_days < CRL_REBUILD_WARNING_DAYS and not config.experimental_crl_auto_renew:
         warnings.append(
             f"crl_valid_days is only {config.crl_valid_days} day(s); the certificate revocation list is "
             "rebuilt at add-on startup, so the add-on must be restarted before it expires. A longer "
