@@ -2,9 +2,11 @@ import json
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 import openvpn_addon.config as config_module
 from openvpn_addon.config import AddonConfig
+from openvpn_addon.network import NetworkResult
 from openvpn_addon.status import collect_status, status_json
 
 
@@ -32,6 +34,10 @@ class StatusTests(unittest.TestCase):
         self.config.share_exports_dir.mkdir(parents=True, exist_ok=True)
         self.config.share_requests_dir.mkdir(parents=True, exist_ok=True)
         self.config.share_results_dir.mkdir(parents=True, exist_ok=True)
+        snapshot = NetworkResult(applied=True, ip_forward=True, out_interface="enp1s0")
+        for target in ("openvpn_addon.health.verify_network", "openvpn_addon.status.verify_network"):
+            self.enterContext(patch(target, return_value=snapshot))
+        self.enterContext(patch("openvpn_addon.status.ip_forward_enabled", return_value=True))
 
     def test_collect_status_includes_summary_routes_and_warnings(self):
         data = collect_status(self.config)
@@ -51,6 +57,8 @@ class StatusTests(unittest.TestCase):
         self.assertIn("ip_forward", names)
         self.assertIn("crl", names)
         self.assertEqual("10.8.0.0/24", data["networking"]["vpn_network"])
+        self.assertTrue(data["networking"]["ip_forward"])
+        self.assertEqual("enp1s0", data["networking"]["out_interface"])
         self.assertIn("next_update", data["crl"])
 
     def test_clients_merge_certificates_with_live_sessions(self):
