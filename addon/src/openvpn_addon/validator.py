@@ -17,6 +17,9 @@ def validate_config(config: AddonConfig) -> None:
     if config.protocol not in PROTOCOLS:
         raise ValueError(f"Unsupported protocol: {config.protocol}")
 
+    if config.tls_version_min not in ("1.2", "1.3"):
+        raise ValueError('tls_version_min must be "1.2" or "1.3"')
+
     if not (1 <= config.listen_port <= 65535):
         raise ValueError(f"Invalid listen_port: {config.listen_port}")
 

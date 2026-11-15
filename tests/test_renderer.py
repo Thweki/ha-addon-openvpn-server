@@ -89,6 +89,33 @@ class RealTemplateTests(unittest.TestCase):
         self.config.duplicate_cn = True
         self.assertNotIn("client-config-dir", renderer.render_server_config(self.config))
 
+    def test_default_tls_minimum_is_preserved_in_both_templates(self):
+        for output in (
+            renderer.render_server_config(self.config),
+            renderer.render_client_config(self.config, "demo"),
+        ):
+            self.assertEqual(
+                ["tls-version-min 1.2"],
+                [line for line in output.splitlines() if line.startswith("tls-version-min")],
+            )
+
+    def test_tls_minimum_is_consistent_in_server_and_client_profiles(self):
+        for version in ("1.2", "1.3"):
+            for protocol in ("udp", "tcp"):
+                for tls_crypt in (False, True):
+                    with self.subTest(version=version, protocol=protocol, tls_crypt=tls_crypt):
+                        self.config.tls_version_min = version
+                        self.config.protocol = protocol
+                        self.config.tls_crypt = tls_crypt
+                        for output in (
+                            renderer.render_server_config(self.config),
+                            renderer.render_client_config(self.config, "demo"),
+                        ):
+                            self.assertEqual(
+                                [f"tls-version-min {version}"],
+                                [line for line in output.splitlines() if line.startswith("tls-version-min")],
+                            )
+
     def test_client_config_uses_modern_crypto_directives(self):
         output = renderer.render_client_config(self.config, "demo")
         self.assertIn("data-ciphers AES-256-GCM:AES-128-GCM:CHACHA20-POLY1305", output)

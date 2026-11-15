@@ -58,6 +58,10 @@
       "name": "Use tls-crypt",
       "description": "Encrypts and authenticates the control channel and hides the VPN from port scanners. Keep it on."
     },
+    "tls_version_min": {
+      "name": "Minimum TLS version",
+      "description": "Minimum control-channel TLS version for the server and exported profiles. Default 1.2 preserves compatibility; choose 1.3 only if every client supports it. Restart the add-on and download updated profiles after changing this."
+    },
     "client_to_client": {
       "name": "Allow clients to reach each other",
       "description": "Usually off for home use."

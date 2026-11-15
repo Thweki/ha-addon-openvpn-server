@@ -58,6 +58,10 @@
       "name": "启用 tls-crypt",
       "description": "加密并认证控制通道，同时让端口扫描器看不出这是 VPN。建议保持开启。"
     },
+    "tls_version_min": {
+      "name": "最低 TLS 版本",
+      "description": "服务端及导出配置的控制通道最低 TLS 版本。默认 1.2 保持兼容；仅在所有客户端均支持时选择 1.3。修改后请重启插件并下载更新后的客户端配置。"
+    },
     "client_to_client": {
       "name": "允许客户端之间互通",
       "description": "家庭场景通常保持关闭。"

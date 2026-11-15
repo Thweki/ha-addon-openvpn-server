@@ -9,7 +9,6 @@ from .config import AddonConfig
 
 TEMPLATES_DIR = Path("/opt/openvpn_server/templates")
 
-TLS_VERSION_MIN = "1.2"
 DEFAULT_DATA_CIPHERS = ["AES-256-GCM", "AES-128-GCM", "CHACHA20-POLY1305"]
 
 
@@ -33,7 +32,7 @@ def render_server_config(config: AddonConfig) -> str:
         data_ciphers=_data_ciphers(config),
         cipher=config.cipher,
         auth=config.auth,
-        tls_version_min=TLS_VERSION_MIN,
+        tls_version_min=config.tls_version_min,
         duplicate_cn=_bool_directive(config.duplicate_cn, "duplicate-cn"),
         client_to_client=_bool_directive(config.client_to_client, "client-to-client"),
         redirect_gateway=_redirect_gateway(config.redirect_gateway),
@@ -55,7 +54,7 @@ def render_client_config(config: AddonConfig, client_name: str) -> str:
         protocol=config.protocol,
         data_ciphers=_data_ciphers(config),
         auth=config.auth,
-        tls_version_min=TLS_VERSION_MIN,
+        tls_version_min=config.tls_version_min,
         tls_crypt_block=_tls_crypt_block(config),
         ca=_read_file(config.pki_dir / "ca.crt"),
         cert=_read_cert_body(config.pki_dir / "issued" / f"{client_name}.crt"),

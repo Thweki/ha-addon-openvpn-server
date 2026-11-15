@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+- Add `tls_version_min` to require TLS 1.2 or TLS 1.3 on the server and in exported
+  client profiles. The default remains TLS 1.2; TLS 1.3 is opt-in.
+
 ## 0.2.2
 
 ### Changed
