@@ -42,6 +42,11 @@ class AddonConfig:
     status_interval: int = 30
     client_name: str = "homeassistant"
     client_expire_days: int = 825
+    experimental_client_retry: bool = False
+    client_auth_retry: str = "none"
+    client_connect_retry_seconds: int = 1
+    client_connect_retry_max_seconds: int = 300
+    client_connect_retry_max_attempts: int = 0
     # Populated by load_config(); never set through options.json in practice.
     unknown_options: list[str] = field(default_factory=list)
 

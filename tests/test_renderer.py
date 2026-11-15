@@ -101,6 +101,44 @@ class RealTemplateTests(unittest.TestCase):
         self.config.protocol = "tcp"
         self.assertNotIn("explicit-exit-notify 1", renderer.render_server_config(self.config))
 
+    def test_client_retry_is_opt_in_and_does_not_change_server(self):
+        original_client = renderer.render_client_config(self.config, "demo")
+        original_server = renderer.render_server_config(self.config)
+        self.config.client_auth_retry = "nointeract"
+        self.config.client_connect_retry_seconds = 5
+        self.config.client_connect_retry_max_seconds = 60
+        self.config.client_connect_retry_max_attempts = 12
+        self.assertEqual(original_client, renderer.render_client_config(self.config, "demo"))
+        self.assertNotIn("auth-retry", original_client)
+        self.assertNotIn("connect-retry", original_client)
+        self.config.experimental_client_retry = True
+        self.assertEqual(original_server, renderer.render_server_config(self.config))
+
+    def test_client_retry_renders_once_for_udp_and_tcp(self):
+        for protocol in ("udp", "tcp"):
+            for mode in ("none", "nointeract", "interact"):
+                with self.subTest(protocol=protocol, mode=mode):
+                    self.config.protocol = protocol
+                    self.config.experimental_client_retry = True
+                    self.config.client_auth_retry = mode
+                    self.config.client_connect_retry_seconds = 5
+                    self.config.client_connect_retry_max_seconds = 60
+                    self.config.client_connect_retry_max_attempts = 12
+                    output = renderer.render_client_config(self.config, "demo")
+                    lines = output.splitlines()
+                    for directive in (f"auth-retry {mode}", "connect-retry 5 60", "connect-retry-max 12"):
+                        self.assertEqual(1, lines.count(directive))
+                    self.assertIn("resolv-retry infinite", lines)
+                    self.assertLess(lines.index(f"auth-retry {mode}"), lines.index("<ca>"))
+                    self.assertIn("remote vpn.example.com 1194", lines)
+
+    def test_client_retry_zero_attempts_omits_limit(self):
+        self.config.experimental_client_retry = True
+        output = renderer.render_client_config(self.config, "demo")
+        self.assertIn("auth-retry none\n", output)
+        self.assertIn("connect-retry 1 300\n", output)
+        self.assertNotIn("connect-retry-max", output)
+
 
 if __name__ == "__main__":
     unittest.main()

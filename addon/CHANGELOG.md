@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+- Experimental client retry policy (default OFF): configure authentication retry,
+  connection delay/backoff cap, and an optional attempt limit in newly exported
+  profiles. Restart the add-on and re-import profiles after changing the options.
+
 ## 0.2.2
 
 ### Changed

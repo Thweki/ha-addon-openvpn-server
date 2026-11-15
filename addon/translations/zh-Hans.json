@@ -106,6 +106,26 @@
       "name": "默认客户端名称",
       "description": "启动时自动创建并重新导出的那份证书。"
     },
+    "experimental_client_retry": {
+      "name": "实验性客户端重试策略",
+      "description": "默认关闭。为导出的 OpenVPN 2.x 配置添加重试控制。更改后请重启插件，重新下载配置并在设备上重新导入。"
+    },
+    "client_auth_retry": {
+      "name": "客户端认证重试",
+      "description": "启用重试策略时：none 在认证失败后停止，nointeract 无提示重试，interact 重新提示输入。不能解决证书过期或被吊销的问题。"
+    },
+    "client_connect_retry_seconds": {
+      "name": "客户端初始重试间隔（秒）",
+      "description": "启用重试策略时：连接尝试之间的初始等待时间，范围为 1 至 86400 秒。"
+    },
+    "client_connect_retry_max_seconds": {
+      "name": "客户端最大重试间隔（秒）",
+      "description": "启用重试策略时：退避等待时间上限，范围为 1 至 86400 秒，且不得小于初始间隔。这是等待时间，不是尝试次数。"
+    },
+    "client_connect_retry_max_attempts": {
+      "name": "客户端连接尝试次数上限",
+      "description": "启用重试策略时：每个远程端点的尝试次数，范围为 1 至 65535。0 表示无限重试，连接成功后计数重置。"
+    },
     "client_expire_days": {
       "name": "客户端证书有效期（天）",
       "description": "新签发客户端证书的有效天数。"

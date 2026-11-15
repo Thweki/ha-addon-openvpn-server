@@ -54,6 +54,20 @@ def validate_config(config: AddonConfig) -> None:
     if config.crl_valid_days <= 0:
         raise ValueError("crl_valid_days must be > 0")
 
+    if config.client_auth_retry not in ("none", "nointeract", "interact"):
+        raise ValueError("client_auth_retry must be none, nointeract, or interact")
+
+    for field in ("client_connect_retry_seconds", "client_connect_retry_max_seconds"):
+        value = getattr(config, field)
+        if not 1 <= value <= 86400:
+            raise ValueError(f"{field} must be between 1 and 86400 seconds")
+
+    if config.client_connect_retry_max_seconds < config.client_connect_retry_seconds:
+        raise ValueError("client_connect_retry_max_seconds must be >= client_connect_retry_seconds")
+
+    if not 0 <= config.client_connect_retry_max_attempts <= 65535:
+        raise ValueError("client_connect_retry_max_attempts must be between 0 and 65535 (0 means unlimited)")
+
     validate_client_name(config.client_name)
 
     vpn_network = ipaddress.IPv4Network(config.vpn_network, strict=False)

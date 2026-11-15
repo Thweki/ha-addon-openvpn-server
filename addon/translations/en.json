@@ -106,6 +106,26 @@
       "name": "Default client name",
       "description": "Certificate created and re-exported automatically at startup."
     },
+    "experimental_client_retry": {
+      "name": "Experimental client retry policy",
+      "description": "Off by default. Adds retry controls to exported OpenVPN 2.x profiles. Restart the add-on, download profiles again and re-import them on your devices after changes."
+    },
+    "client_auth_retry": {
+      "name": "Client authentication retry",
+      "description": "With the retry policy enabled: none stops on authentication errors, nointeract retries without prompting, interact prompts again. Does not fix expired or revoked certificates."
+    },
+    "client_connect_retry_seconds": {
+      "name": "Initial client retry delay (seconds)",
+      "description": "With the retry policy enabled: initial delay between connection attempts, from 1 to 86400 seconds."
+    },
+    "client_connect_retry_max_seconds": {
+      "name": "Maximum client retry delay (seconds)",
+      "description": "With the retry policy enabled: backoff cap from 1 to 86400 seconds, at least the initial delay. This is a delay, not an attempt limit."
+    },
+    "client_connect_retry_max_attempts": {
+      "name": "Client connection attempt limit",
+      "description": "With the retry policy enabled: attempts per remote, from 1 to 65535. 0 keeps retrying indefinitely. A successful connection resets the count."
+    },
     "client_expire_days": {
       "name": "Client certificate validity (days)",
       "description": "How long newly issued client certificates stay valid."

@@ -53,6 +53,11 @@ options:
   status_interval: 30
   client_name: "homeassistant"
   client_expire_days: 825
+  experimental_client_retry: false
+  client_auth_retry: "none"
+  client_connect_retry_seconds: 1
+  client_connect_retry_max_seconds: 300
+  client_connect_retry_max_attempts: 0
 schema:
   public_endpoint: str?
   listen_port: port
@@ -81,3 +86,8 @@ schema:
   status_interval: int
   client_name: str
   client_expire_days: int
+  experimental_client_retry: bool
+  client_auth_retry: list(none|nointeract|interact)
+  client_connect_retry_seconds: int(1,86400)
+  client_connect_retry_max_seconds: int(1,86400)
+  client_connect_retry_max_attempts: int(0,65535)

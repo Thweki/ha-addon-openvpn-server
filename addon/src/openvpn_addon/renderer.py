@@ -52,6 +52,7 @@ def render_client_config(config: AddonConfig, client_name: str) -> str:
     return template.substitute(
         remote_host=remote_host,
         remote_port=remote_port,
+        client_retry_directives=_client_retry_directives(config),
         protocol=config.protocol,
         data_ciphers=_data_ciphers(config),
         auth=config.auth,
@@ -61,6 +62,19 @@ def render_client_config(config: AddonConfig, client_name: str) -> str:
         cert=_read_cert_body(config.pki_dir / "issued" / f"{client_name}.crt"),
         key=_read_file(config.pki_dir / "private" / f"{client_name}.key"),
     )
+
+
+def _client_retry_directives(config: AddonConfig) -> str:
+    if not config.experimental_client_retry:
+        return ""
+    lines = [
+        f"auth-retry {config.client_auth_retry}",
+        f"connect-retry {config.client_connect_retry_seconds} {config.client_connect_retry_max_seconds}",
+    ]
+    # OpenVPN's unlimited default is selected by omitting connect-retry-max.
+    if config.client_connect_retry_max_attempts > 0:
+        lines.append(f"connect-retry-max {config.client_connect_retry_max_attempts}")
+    return "\n".join(lines) + "\n"
 
 
 def _resolve_remote(config: AddonConfig) -> tuple[str, int]:
