@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased
+
+- Add experimental, opt-in client endpoint failover for multiple addresses of the
+  same VPN server. Exported profiles try the primary address followed by validated,
+  ordered backups with a configurable connection attempt timeout. Disabled by
+  default; devices must re-import newly exported profiles to use it.
+
 ## 0.2.2
 
 ### Changed

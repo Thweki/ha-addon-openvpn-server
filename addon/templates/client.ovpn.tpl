@@ -2,7 +2,7 @@ client
 dev tun
 proto ${protocol}
 remote ${remote_host} ${remote_port}
-resolv-retry infinite
+${failover_lines}resolv-retry infinite
 nobind
 persist-key
 persist-tun

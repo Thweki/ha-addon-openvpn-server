@@ -14,6 +14,18 @@
       "name": "Client connection port",
       "description": "The port written into client profiles. If your router forwards external 9999 to local 1194, put 9999 here."
     },
+    "experimental_client_failover": {
+      "name": "Experimental client endpoint failover",
+      "description": "Off by default. Export profiles with alternate addresses for the same VPN server. Re-export and re-import profiles after changing these settings."
+    },
+    "client_fallback_endpoints": {
+      "name": "Fallback client endpoints",
+      "description": "Ordered list of 1 to 8 DNS names or IPv4 addresses, optionally followed by :port. Ports default to the client connection port. All endpoints must reach this server using the selected protocol. Ignored when failover is off."
+    },
+    "client_connect_timeout": {
+      "name": "Client connection attempt timeout (seconds)",
+      "description": "Experimental failover only: wait 1 to 300 seconds for a server response before trying the next endpoint. Default 30. This does not control established-session keepalive."
+    },
     "protocol": {
       "name": "Transport protocol",
       "description": "UDP is faster and is the recommended default. Choose TCP only if your network blocks UDP."

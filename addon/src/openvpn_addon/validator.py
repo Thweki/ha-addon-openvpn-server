@@ -3,6 +3,7 @@ from __future__ import annotations
 import ipaddress
 import re
 
+from .client_failover import client_failover_remotes
 from .config import AddonConfig
 
 
@@ -29,6 +30,8 @@ def validate_config(config: AddonConfig) -> None:
 
     if config.public_endpoint:
         _validate_public_endpoint(config.public_endpoint)
+
+    client_failover_remotes(config)
 
     for item in config.dns_servers:
         ipaddress.IPv4Address(item)

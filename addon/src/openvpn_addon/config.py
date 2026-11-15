@@ -19,6 +19,9 @@ class AddonConfig:
     public_endpoint: str = ""
     listen_port: int = 1194
     public_port: int = 1194
+    experimental_client_failover: bool = False
+    client_fallback_endpoints: list[str] = field(default_factory=list)
+    client_connect_timeout: int = 30
     protocol: str = "udp"
     device: str = "tun"
     vpn_subnet: str = "10.8.0.0"

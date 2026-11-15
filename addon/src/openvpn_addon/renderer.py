@@ -4,6 +4,7 @@ import ipaddress
 from pathlib import Path
 from string import Template
 
+from .client_failover import client_failover_remotes
 from .config import AddonConfig
 
 
@@ -48,10 +49,16 @@ def render_server_config(config: AddonConfig) -> str:
 
 def render_client_config(config: AddonConfig, client_name: str) -> str:
     template = Template((TEMPLATES_DIR / "client.ovpn.tpl").read_text(encoding="utf-8"))
+    fallback_remotes = client_failover_remotes(config)
+    failover_lines = ""
+    if config.experimental_client_failover:
+        failover_lines = "".join(f"remote {host} {port}\n" for host, port in fallback_remotes)
+        failover_lines += f"server-poll-timeout {config.client_connect_timeout}\n"
     remote_host, remote_port = _resolve_remote(config)
     return template.substitute(
         remote_host=remote_host,
         remote_port=remote_port,
+        failover_lines=failover_lines,
         protocol=config.protocol,
         data_ciphers=_data_ciphers(config),
         auth=config.auth,
