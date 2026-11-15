@@ -131,6 +131,33 @@ openvpn-addon client revoke iphone
 openvpn-addon client list
 ```
 
+## CA and Server Certificate Expiry
+
+Inside the add-on container, check the certificates whose expiry can interrupt
+access for every client:
+
+```bash
+openvpn-addon expiry
+openvpn-addon expiry --within-days 90 --format json
+```
+
+The read-only report shows CA and server validity dates in UTC, whole days
+remaining, and their shared expiry deadline (the earlier expiry). It warns within
+30 days by default. The warning boundary is inclusive and uses exact time, not
+rounded days; `--within-days 0` checks for expiry without advance warnings.
+Exit codes are **0** for both dates healthy, **1** for impending expiry, and **2**
+for expired, not-yet-valid, missing or unreadable certificates. Missing dates
+leave the shared deadline unknown. An expiry at the check time is treated as expired.
+
+Only `pki/ca.crt` and `pki/issued/server.crt` are inspected. Private keys, client
+profiles and client certificates are not read; certificate symlinks are rejected.
+No settings, PKI, CRLs or running services are changed, and invalid add-on options
+do not prevent the report. OpenSSL is required; failure to run it or decode a
+certificate is reported as `unreadable` without printing its output.
+This is a date check, not a signature, revocation or connectivity check.
+Plan CA/server certificate maintenance before the reported deadline; restarting
+the add-on does not replace existing CA or server certificates.
+
 ## Client Profiles
 
 Client profiles embed the client private key and are written with mode `0600`. Download them from the panel.
