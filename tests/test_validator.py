@@ -13,6 +13,17 @@ class ValidatorTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             validate_client_name("bad name")
 
+    def test_accepts_openvpn_verbosity_range_and_unset(self):
+        for value in (None, *range(12)):
+            with self.subTest(value=value):
+                validate_config(AddonConfig(openvpn_verbosity=value))
+
+    def test_rejects_invalid_openvpn_verbosity(self):
+        for value in (-1, 12, True, False, 4.5, "4"):
+            with self.subTest(value=value):
+                with self.assertRaisesRegex(ValueError, "openvpn_verbosity"):
+                    validate_config(AddonConfig(openvpn_verbosity=value))
+
     def test_reject_overlapping_vpn_and_local_networks(self):
         config = AddonConfig(
             server_host="192.168.1.6",

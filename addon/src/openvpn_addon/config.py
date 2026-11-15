@@ -39,6 +39,7 @@ class AddonConfig:
     inactive_timeout: int = 0
     keepalive: str = "10 120"
     log_level: str = "info"
+    openvpn_verbosity: int | None = None
     status_interval: int = 30
     client_name: str = "homeassistant"
     client_expire_days: int = 825
@@ -180,6 +181,13 @@ def _coerce_scalars(payload: dict[str, object]) -> dict[str, object]:
             result[item.name] = _coerce_bool(value)
         elif annotation == "int":
             result[item.name] = _coerce_int(value)
+        elif annotation == "int | None":
+            if value is None or type(value) is int:
+                result[item.name] = value
+            elif isinstance(value, str) and value.strip().isascii() and value.strip().removeprefix("-").isdigit():
+                result[item.name] = int(value.strip())
+            else:
+                raise ValueError(f"{item.name} must be an integer or null")
         else:
             result[item.name] = value
     return result

@@ -78,6 +78,7 @@ schema:
   inactive_timeout: int
   keepalive: str
   log_level: str
+  openvpn_verbosity: int(0,11)?
   status_interval: int
   client_name: str
   client_expire_days: int

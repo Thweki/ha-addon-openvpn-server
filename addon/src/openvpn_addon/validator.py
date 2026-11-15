@@ -42,6 +42,11 @@ def validate_config(config: AddonConfig) -> None:
     if config.log_level not in LOG_LEVELS:
         raise ValueError(f"Invalid log level: {config.log_level}")
 
+    if config.openvpn_verbosity is not None and (
+        type(config.openvpn_verbosity) is not int or not 0 <= config.openvpn_verbosity <= 11
+    ):
+        raise ValueError("openvpn_verbosity must be an integer from 0 to 11")
+
     if config.inactive_timeout < 0:
         raise ValueError("inactive_timeout must be >= 0")
 

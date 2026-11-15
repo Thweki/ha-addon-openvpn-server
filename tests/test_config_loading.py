@@ -48,6 +48,23 @@ class ConfigLoadingTests(unittest.TestCase):
         config = self.load({"nat_enabled": True, "legacy_knob": "x", "another": 1})
         self.assertEqual(["another", "legacy_knob"], config.unknown_options)
 
+    def test_openvpn_verbosity_is_optional(self):
+        self.assertIsNone(self.load({}).openvpn_verbosity)
+        self.assertIsNone(self.load({"openvpn_verbosity": None}).openvpn_verbosity)
+
+    def test_loads_openvpn_verbosity(self):
+        for value in (0, 4, 11, "0", " 6 "):
+            with self.subTest(value=value):
+                config = self.load({"openvpn_verbosity": value})
+                self.assertEqual(int(value), config.openvpn_verbosity)
+                self.assertEqual([], config.unknown_options)
+
+    def test_rejects_non_integer_openvpn_verbosity(self):
+        for value in (True, False, 4.5, 4.0, "4.5", "debug", "", "--1", "1\nverb 11", [], {}):
+            with self.subTest(value=value):
+                with self.assertRaisesRegex(ValueError, "openvpn_verbosity"):
+                    self.load({"openvpn_verbosity": value})
+
     def test_scalar_types_are_coerced(self):
         config = self.load(
             {

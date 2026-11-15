@@ -98,6 +98,10 @@
       "name": "Log level",
       "description": "Higher levels log more detail into the add-on log."
     },
+    "openvpn_verbosity": {
+      "name": "OpenVPN server verbosity override",
+      "description": "Optional integer from 0 to 11. Overrides log_level for the server; omit to keep its mapping (info = 3). Save and restart the add-on to apply. Client profiles are unchanged."
+    },
     "status_interval": {
       "name": "Status refresh interval (seconds)",
       "description": "How often the online client list is written."
