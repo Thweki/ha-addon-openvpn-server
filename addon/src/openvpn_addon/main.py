@@ -13,6 +13,7 @@ from pathlib import Path
 from typing import Any, Callable
 
 from .config import DATA_ROOT, AddonConfig, load_config
+from .ciphers import collect_ciphers
 from .health import collect_health, worst_status
 from .network import apply_network, ip_forward_enabled, remove_network
 from .pki import PkiManager
@@ -42,6 +43,8 @@ def build_parser() -> argparse.ArgumentParser:
     _command(subparsers, "init", cmd_init)
     _command(subparsers, "run", cmd_run)
     _command(subparsers, "status", cmd_status)
+    ciphers = subparsers.add_parser("ciphers", help="Report configured TLS/data ciphers without reading keys")
+    ciphers.set_defaults(func=cmd_ciphers)
 
     client = subparsers.add_parser("client", help="Manage OpenVPN client certificates and exports")
     client_sub = client.add_subparsers(dest="client_command", required=True)
@@ -144,6 +147,13 @@ def cmd_status(_: argparse.Namespace) -> int:
     config = load_and_validate()
     print(status_json(config))
     return 0
+
+
+def cmd_ciphers(_: argparse.Namespace) -> int:
+    # Inspect disk state even if options.json is invalid or has pending changes.
+    report = collect_ciphers(AddonConfig().server_conf_path)
+    print(json.dumps(report, indent=2))
+    return 0 if report["available"] else 1
 
 
 def cmd_client_create(args: argparse.Namespace) -> int:

@@ -35,6 +35,27 @@ The add-on keeps running and retrying with backoff so the panel stays reachable,
 
 The panel's **Download diagnostics** produces a text bundle with the status payload, runtime details and the rendered `server.conf`. Attach it to bug reports; it does not contain private keys.
 
+## Cipher report
+
+Inside the add-on container, run:
+
+```sh
+openvpn-addon ciphers
+```
+
+This read-only JSON report inspects `/data/openvpn/runtime/server.conf` (under `OPENVPN_ADDON_DATA` if overridden). It needs no running OpenVPN process, valid options file, PKI, or external tools. It does not change settings or restart the service.
+
+`settings` contains occurrences of `data-ciphers`, `data-ciphers-fallback`, legacy `cipher`/`ncp-ciphers`, `tls-version-min`/`tls-version-max`, `tls-cipher`, and `tls-ciphersuites`. Each occurrence has its source line and ordered values, with an advisory assessment:
+
+- `modern`: a recognized AEAD cipher/suite or TLS 1.2/1.3 version; not proof of availability or overall security.
+- `legacy`: a recognized CBC compatibility choice, not necessarily broken or formally deprecated.
+- `deprecated`: a recognized obsolete choice, such as BF-CBC, DES, RC4, TLS 1.0/1.1, or disabled data encryption.
+- `unknown`: an unrecognized value or library expression, such as `DEFAULT:!RC4`; expressions are not expanded.
+
+Empty lists mean the directive is not explicitly configured. Library defaults are not guessed. In particular, the shipped template sets data ciphers and a TLS minimum but leaves TLS suite lists unset. `tls-cipher` controls TLS 1.2 and below; `tls-ciphersuites` controls TLS 1.3. These distinctions follow the [OpenVPN 2.6 manual](https://build.openvpn.net/man/openvpn-2.6/openvpn.8.html).
+
+The report describes disk configuration, not negotiated client ciphers or confirmed live state. It preserves repeated directives rather than resolving them. `complete: false` and `warnings` identify malformed values, unterminated inline blocks, includes, or unsupported compatibility controls. `complete: true` only describes this limited scan, not full OpenVPN validation. Referenced files are never followed; inline blocks and unrelated directives are omitted. Missing/unreadable configuration produces `available: false` and exit code 1; a readable report returns 0 even when it contains warnings or deprecated choices. No private keys or client profiles are opened.
+
 ## Files and paths
 
 - Client profiles: `/data/openvpn/exports/` (mode `0600`)
