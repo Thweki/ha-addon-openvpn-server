@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 import collections
 import json
+import os
 import signal
 import subprocess
 import sys
@@ -13,6 +14,7 @@ from pathlib import Path
 from typing import Any, Callable
 
 from .config import DATA_ROOT, AddonConfig, load_config
+from .audit import record_event
 from .health import collect_health, worst_status
 from .network import apply_network, ip_forward_enabled, remove_network
 from .pki import PkiManager
@@ -42,6 +44,11 @@ def build_parser() -> argparse.ArgumentParser:
     _command(subparsers, "init", cmd_init)
     _command(subparsers, "run", cmd_run)
     _command(subparsers, "status", cmd_status)
+
+    hook = subparsers.add_parser("audit-event", help="Internal OpenVPN audit hook")
+    # OpenVPN appends a temporary configuration path to client-connect only.
+    hook.add_argument("config_file", nargs="?")
+    hook.set_defaults(func=cmd_audit_event)
 
     client = subparsers.add_parser("client", help="Manage OpenVPN client certificates and exports")
     client_sub = client.add_subparsers(dest="client_command", required=True)
@@ -143,6 +150,18 @@ def cmd_run(_: argparse.Namespace) -> int:
 def cmd_status(_: argparse.Namespace) -> int:
     config = load_and_validate()
     print(status_json(config))
+    return 0
+
+
+def cmd_audit_event(_: argparse.Namespace) -> int:
+    try:
+        event = {"client-connect": "client_connect", "client-disconnect": "client_disconnect"}.get(
+            os.environ.get("script_type", "")
+        )
+        if event:
+            record_event(load_config(), event, os.environ.get("common_name", ""))
+    except Exception:  # noqa: BLE001 - a hook failure must never reject a VPN connection
+        print("WARNING: audit hook unavailable; history may be incomplete.", flush=True)
     return 0
 
 

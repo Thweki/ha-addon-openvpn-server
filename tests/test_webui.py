@@ -1,14 +1,18 @@
+import io
 import json
+from http.client import HTTPResponse
 import tempfile
 import unittest
 import urllib.error
 import urllib.request
 from pathlib import Path
+from unittest.mock import patch
 
 import openvpn_addon.config as config_module
 from openvpn_addon.config import AddonConfig
+from openvpn_addon.audit import read_events, record_event
 from openvpn_addon.validator import validate_client_name
-from openvpn_addon.webui import PanelActions, PanelServer, _match_client_route
+from openvpn_addon.webui import PanelActions, PanelServer, _build_handler, _match_client_route
 
 
 class RouteTests(unittest.TestCase):
@@ -134,6 +138,114 @@ class PanelTests(unittest.TestCase):
     def test_unknown_path_is_not_found(self):
         status, _, _ = self.request("/api/nope")
         self.assertEqual(404, status)
+
+
+class MemorySocket:
+    def __init__(self, data):
+        self.input = io.BytesIO(data)
+        self.output = bytearray()
+
+    def makefile(self, mode, *args):
+        return self.input
+
+    def sendall(self, data):
+        self.output.extend(data)
+
+
+class AuditPanelTests(unittest.TestCase):
+    """Exercise real HTTP parsing and responses without requiring a listening socket."""
+
+    def setUp(self):
+        self.tempdir = tempfile.TemporaryDirectory()
+        self.addCleanup(self.tempdir.cleanup)
+        patcher = patch.object(config_module, "DATA_ROOT", Path(self.tempdir.name))
+        patcher.start()
+        self.addCleanup(patcher.stop)
+        self.config = AddonConfig()
+
+        def profile(name):
+            if name == "ghost":
+                raise ValueError("unknown client")
+            return "client\nremote vpn.example.com 1194\n"
+
+        self.actions = PanelActions(
+            issue_client=lambda name: {}, revoke_client=lambda name: {},
+            export_profile=profile, refresh_crl=lambda: {},
+            restart_openvpn=lambda: {}, runtime_info=lambda: {},
+        )
+
+    def request(self, path):
+        connection = MemorySocket(f"GET {path} HTTP/1.0\r\n\r\n".encode())
+        handler = _build_handler(self.config, self.actions)
+        with patch.object(handler, "log_message"):
+            handler(connection, ("127.0.0.1", 1), None)
+        with HTTPResponse(MemorySocket(bytes(connection.output))) as response:
+            response.begin()
+            return response.status, response.read().decode(), dict(response.headers)
+
+    def test_audit_is_disabled_by_default(self):
+        status, body, headers = self.request("/api/audit")
+        self.assertEqual(200, status)
+        self.assertFalse(json.loads(body)["enabled"])
+        self.assertEqual("no-store", headers["Cache-Control"])
+        self.request("/api/clients/alice/profile")
+        self.assertFalse(self.config.audit_path.exists())
+
+    def test_profile_download_records_only_success_and_no_profile_body(self):
+        self.config.experimental_audit_log = True
+        self.request("/api/clients/ghost/profile")
+        self.assertEqual([], read_events(self.config)["events"])
+        self.request("/api/clients/alice/profile")
+        events = read_events(self.config)["events"]
+        self.assertEqual(1, len(events))
+        self.assertEqual("profile_download", events[0]["event"])
+        self.assertEqual("alice", events[0]["client"])
+        self.assertNotIn("remote vpn.example.com", json.dumps(events))
+
+    def test_audit_pages_and_bad_cursors(self):
+        self.config.experimental_audit_log = True
+        for number in range(3):
+            record_event(self.config, "client_connect", f"client{number}")
+        with patch("openvpn_addon.audit.PAGE_SIZE", 2):
+            status, body, _ = self.request("/api/audit")
+            self.assertEqual(200, status)
+            first = json.loads(body)
+            self.assertEqual(["client2", "client1"], [e["client"] for e in first["events"]])
+            status, body, _ = self.request(f"/api/audit?before={first['next_before']}")
+            self.assertEqual(["client0"], [e["client"] for e in json.loads(body)["events"]])
+            self.assertIsNone(json.loads(body)["next_before"])
+        for cursor in ("0", "-1", "abc", "", str(2**64)):
+            status, _, _ = self.request(f"/api/audit?before={cursor}")
+            self.assertEqual(400, status)
+
+    def test_audit_read_errors_are_explicit_and_redacted(self):
+        self.config.experimental_audit_log = True
+        self.config.audit_path.parent.mkdir()
+        self.config.audit_path.write_text("invalid database")
+        status, body, _ = self.request("/api/audit")
+        self.assertEqual(503, status)
+        self.assertEqual({"message": "Audit history unavailable"}, json.loads(body))
+
+    def test_failed_profile_write_is_not_a_download(self):
+        self.config.experimental_audit_log = True
+        with patch.object(MemorySocket, "sendall", side_effect=BrokenPipeError):
+            with self.assertRaises(BrokenPipeError):
+                self.request("/api/clients/alice/profile")
+        self.assertEqual([], read_events(self.config)["events"])
+
+    def test_unavailable_audit_storage_does_not_block_profile_download(self):
+        self.config.experimental_audit_log = True
+        with patch("openvpn_addon.audit.os.open", side_effect=OSError):
+            with patch("builtins.print"):
+                status, body, _ = self.request("/api/clients/alice/profile")
+        self.assertEqual(200, status)
+        self.assertIn("remote vpn.example.com", body)
+
+    def test_audit_page_uses_text_nodes_and_ingress_relative_urls(self):
+        _, body, _ = self.request("/")
+        self.assertIn("Audit history (experimental)", body)
+        self.assertIn("cell.textContent = value", body)
+        self.assertIn('api("api/audit"', body)
 
 
 class PanelBindingTests(unittest.TestCase):

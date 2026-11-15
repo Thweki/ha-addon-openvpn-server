@@ -78,6 +78,10 @@
       "name": "Revocation list validity (days)",
       "description": "How long the certificate revocation list stays valid. It is rebuilt at add-on startup, so keep this comfortably longer than your typical uptime."
     },
+    "experimental_audit_log": {
+      "name": "Experimental audit history",
+      "description": "Off by default. Retain the last 1,000 client connection, disconnection, revocation and panel profile download events. Restart after changing. No keys or profile contents are logged."
+    },
     "server_host": {
       "name": "Local bind address",
       "description": "Address OpenVPN listens on inside the container. 0.0.0.0 is correct unless you have a specific reason."

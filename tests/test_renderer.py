@@ -84,6 +84,17 @@ class RealTemplateTests(unittest.TestCase):
         self.assertNotIn("ecdh-curve", output)
         self.assertNotIn("\ncipher ", output)
 
+    def test_audit_hooks_are_only_rendered_when_enabled(self):
+        output = renderer.render_server_config(self.config)
+        self.assertNotIn("script-security", output)
+        self.assertNotIn("audit-event", output)
+        self.config.experimental_audit_log = True
+        output = renderer.render_server_config(self.config)
+        self.assertIn("script-security 2\n", output)
+        self.assertIn("setenv PYTHONPATH /opt/openvpn_server/src\n", output)
+        self.assertIn('client-connect "/usr/local/bin/openvpn-addon audit-event"\n', output)
+        self.assertIn('client-disconnect "/usr/local/bin/openvpn-addon audit-event"\n', output)
+
     def test_server_config_only_references_ccd_for_per_device_certificates(self):
         self.assertIn("client-config-dir", renderer.render_server_config(self.config))
         self.config.duplicate_cn = True
