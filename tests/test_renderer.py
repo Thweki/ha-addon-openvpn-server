@@ -84,6 +84,11 @@ class RealTemplateTests(unittest.TestCase):
         self.assertNotIn("ecdh-curve", output)
         self.assertNotIn("\ncipher ", output)
 
+    def test_server_config_selects_status_format_v2(self):
+        output = renderer.render_server_config(self.config)
+        self.assertIn("status-version 2", output.splitlines())
+        self.assertIn(f"status {self.config.status_path} {self.config.status_interval}", output.splitlines())
+
     def test_server_config_only_references_ccd_for_per_device_certificates(self):
         self.assertIn("client-config-dir", renderer.render_server_config(self.config))
         self.config.duplicate_cn = True
