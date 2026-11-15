@@ -70,6 +70,14 @@
       "name": "分配固定 VPN 地址",
       "description": "给每个客户端一个稳定的 VPN 地址，方便设置路由器与防火墙规则。仅在证书不共用时生效。"
     },
+    "experimental_client_overrides": {
+      "name": "实验性客户端网段配置",
+      "description": "默认关闭。将远端 IPv4 网段分配给指定的客户端路由器。需要 tun、固定 VPN 地址和独立证书。修改后请重启插件。"
+    },
+    "client_overrides": {
+      "name": "客户端网段配置",
+      "description": "每项包含 client_name 和 iroutes。iroutes 为逗号分隔的 IPv4 CIDR 网段，例如 192.168.50.0/24。仅在启用实验性客户端网段配置时生效。远端转发和回程路由设置请参阅文档。"
+    },
     "publish_profiles_to_share": {
       "name": "同时把客户端配置复制到 /share",
       "description": "默认关闭。导出的 .ovpn 内含客户端私钥，而 /share 可被其它插件读取；建议改为从插件面板下载。"

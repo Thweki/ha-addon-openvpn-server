@@ -5,6 +5,57 @@ Full repository documentation:
 - [README.md](https://github.com/Thweki/ha-addon-openvpn-server/blob/main/README.md)
 - [README.zh-CN.md](https://github.com/Thweki/ha-addon-openvpn-server/blob/main/README.zh-CN.md)
 
+## Experimental: networks behind a client router
+
+Use per-client CCD overrides when Home Assistant needs to reach a remote subnet
+behind an OpenVPN client, such as sensors at a cabin. The feature is **off by
+default**. Configure it in the add-on options (YAML mode):
+
+```yaml
+experimental_client_overrides: true
+fixed_client_ips: true
+duplicate_cn: false
+device: tun
+client_overrides:
+  - client_name: cabin-router
+    iroutes: "192.168.50.0/24, 192.168.51.10/32"
+```
+
+Issue `cabin-router` through the existing client panel and install that profile on
+the remote router. `client_name` must exactly match its certificate name. These
+options do not create or re-enable certificates. Restart the **add-on** after
+changing options; restarting only the OpenVPN process does not reload options.
+
+For each network, the add-on writes a server `route` and an `iroute` in that
+client's generated CCD file, alongside its existing automatic `ifconfig-push`.
+The server route sends traffic into the VPN; the CCD route assigns the network
+to its client. See the [OpenVPN manual](https://openvpn.net/community-docs/community-articles/openvpn-2-6-manual/)
+for `iroute` and `client-config-dir` semantics.
+
+- Requires `tun`, fixed client addresses, and one certificate per device.
+- `iroutes` is a comma-separated string of IPv4 networks with explicit prefixes
+  and no host bits (individual hosts use `/32`). IPv6 and arbitrary CCD directives
+  are not supported. `DEFAULT` and `server` are reserved client names.
+- Duplicate client entries, overlapping client networks, default routes, and
+  overlaps with the VPN subnet or `lan_networks` are rejected before files change.
+- Configure forwarding and firewall access on the remote router, and a return
+  route from its LAN to the source network used by Home Assistant (or NAT on that
+  router). This feature does not install site-to-site firewall/NAT rules. Access
+  from other home LAN hosts also needs a route via the VPN server and host forwarding.
+- Routes are not automatically advertised to other VPN clients. If those clients
+  should reach the remote network, also add it to `extra_routes` and enable
+  `client_to_client`. OpenVPN suppresses a matching pushed route for its owning
+  client. Do not put remote networks in `lan_networks`, which describes the server LAN.
+- Only valid, issued clients receive CCD files; revocation removes the file during
+  the existing client synchronization. Server routes remain configured while a
+  client is absent, revoked, or offline, so traffic to that network cannot be
+  delivered until its owner connects. Remove the override and restart to remove
+  the server route.
+- Removing an override or setting `experimental_client_overrides: false`, then
+  restarting the add-on, removes generated overrides while retaining ordinary
+  fixed VPN addresses. Disabled overrides are ignored and may be kept for later.
+  Do not edit generated CCD files directly; synchronization replaces them.
+
 ## Troubleshooting
 
 Start with **Open Web UI -> Health**. Every check below is reported there together with the reason.

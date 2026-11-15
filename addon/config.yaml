@@ -43,6 +43,8 @@ options:
   client_to_client: false
   duplicate_cn: false
   fixed_client_ips: true
+  experimental_client_overrides: false
+  client_overrides: []
   publish_profiles_to_share: false
   crl_valid_days: 3650
   server_host: "0.0.0.0"
@@ -71,6 +73,10 @@ schema:
   client_to_client: bool
   duplicate_cn: bool
   fixed_client_ips: bool
+  experimental_client_overrides: bool
+  client_overrides:
+    - client_name: str
+      iroutes: str
   publish_profiles_to_share: bool
   crl_valid_days: int
   server_host: str

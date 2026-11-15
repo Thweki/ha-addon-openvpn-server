@@ -55,6 +55,7 @@ def validate_config(config: AddonConfig) -> None:
         raise ValueError("crl_valid_days must be > 0")
 
     validate_client_name(config.client_name)
+    validated_client_iroutes(config)
 
     vpn_network = ipaddress.IPv4Network(config.vpn_network, strict=False)
     for item in config.local_networks:
@@ -63,6 +64,49 @@ def validate_config(config: AddonConfig) -> None:
             raise ValueError(
                 f"VPN subnet {vpn_network} overlaps with local_networks entry {local_network}"
             )
+
+
+def validated_client_iroutes(config: AddonConfig) -> dict[str, list[ipaddress.IPv4Network]]:
+    """Validate structured CCD overrides before rendering or changing runtime files."""
+    if not config.experimental_client_overrides:
+        return {}
+    if not isinstance(config.client_overrides, list):
+        raise ValueError("client_overrides must be a list")
+    if not config.client_overrides:
+        return {}
+    if config.duplicate_cn or not config.fixed_client_ips or config.device != "tun":
+        raise ValueError(
+            "client_overrides requires device=tun, fixed_client_ips=true and duplicate_cn=false"
+        )
+
+    protected = [ipaddress.IPv4Network(config.vpn_network)]
+    protected.extend(ipaddress.IPv4Network(item, strict=False) for item in config.local_networks)
+    result: dict[str, list[ipaddress.IPv4Network]] = {}
+    claimed: list[ipaddress.IPv4Network] = []
+    for entry in config.client_overrides:
+        if not isinstance(entry, dict) or set(entry) != {"client_name", "iroutes"}:
+            raise ValueError("Each client_overrides entry must contain only client_name and iroutes")
+        name = entry["client_name"]
+        if not isinstance(name, str) or not CLIENT_NAME_RE.fullmatch(name) or name in {"DEFAULT", "server"}:
+            raise ValueError("client_overrides requires a valid, non-reserved client_name")
+        if name in result:
+            raise ValueError(f"Duplicate client_overrides entry for {name}")
+        routes = entry["iroutes"]
+        if not isinstance(routes, str) or not routes.strip():
+            raise ValueError(f"client_overrides iroutes for {name} must be a non-empty CIDR string")
+        result[name] = []
+        for item in routes.split(","):
+            item = item.strip()
+            if "/" not in item:
+                raise ValueError(f"client_overrides iroutes for {name} must use IPv4 CIDR notation")
+            network = ipaddress.IPv4Network(item, strict=True)
+            if network.prefixlen == 0 or any(network.overlaps(other) for other in protected):
+                raise ValueError(f"client_overrides route {network} overlaps the VPN or a local network")
+            if any(network.overlaps(other) for other in claimed):
+                raise ValueError(f"client_overrides route {network} overlaps another client route")
+            claimed.append(network)
+            result[name].append(network)
+    return result
 
 
 def validate_client_name(name: str) -> None:
