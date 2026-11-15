@@ -273,7 +273,20 @@ class OpenVpnSupervisor:
     def supervise_forever(self, stop_event: threading.Event) -> None:
         backoff = 1.0
         while not stop_event.is_set():
-            self.start()
+            try:
+                self.start()
+            except OSError as error:
+                if stop_event.is_set():
+                    return
+                self.restarts += 1
+                backoff = min(backoff * 2, 60.0)
+                print(
+                    f"ERROR: unable to start OpenVPN: {error}. The add-on panel stays "
+                    f"available with diagnostics; retrying in {backoff:.0f}s.",
+                    flush=True,
+                )
+                stop_event.wait(backoff)
+                continue
             process = self._process
             if process is None:
                 return
