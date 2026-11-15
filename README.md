@@ -131,6 +131,13 @@ openvpn-addon client revoke iphone
 openvpn-addon client list
 ```
 
+## Usage Metrics
+
+Run `openvpn-addon metrics` inside the add-on container for an anonymous JSON
+usage snapshot, or `openvpn-addon metrics --format prometheus` for monitoring
+output. No option or experimental flag is required. See [metrics documentation](addon/DOCS.md#usage-metrics)
+for export examples, freshness handling, and metric meanings.
+
 ## Client Profiles
 
 Client profiles embed the client private key and are written with mode `0600`. Download them from the panel.

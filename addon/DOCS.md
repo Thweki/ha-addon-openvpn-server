@@ -35,6 +35,55 @@ The add-on keeps running and retrying with backoff so the panel stays reachable,
 
 The panel's **Download diagnostics** produces a text bundle with the status payload, runtime details and the rendered `server.conf`. Attach it to bug reports; it does not contain private keys.
 
+## Usage metrics
+
+Run these commands inside the add-on container. Metrics are available without
+enabling an option or restarting OpenVPN:
+
+```sh
+openvpn-addon metrics
+openvpn-addon metrics --format json > /tmp/openvpn-usage.json
+openvpn-addon metrics --format prometheus > /tmp/openvpn-usage.prom
+```
+
+The command reads the existing status file only (plus add-on settings). It does
+not inspect PKI or profiles, run network checks, change state, or expose a new
+HTTP port. Output contains no names, addresses, settings, keys, or per-client
+labels. Redirection writes the output file; the command itself writes only stdout.
+
+JSON keys correspond to Prometheus metric names with the `openvpn_addon_` prefix:
+
+| JSON key | Meaning |
+| --- | --- |
+| `status_readable` | 1 if the status file was read successfully; otherwise 0. |
+| `status_valid` | 1 if the snapshot has a client header, valid session rows, an END marker, and did not change during the read. |
+| `status_fresh` | 1 if valid and the file modification time is no older than `max(60, 2 * status_interval)` seconds, and not in the future. |
+| `status_age_seconds` | Seconds since file modification (clamped to zero for future timestamps). |
+| `connected_sessions` | Number of connected sessions, including multiple sessions sharing a certificate. |
+| `connected_clients` | Number of distinct connected certificate common names. |
+| `session_received_bytes` | Sum of bytes the server received for currently connected sessions. |
+| `session_sent_bytes` | Sum of bytes the server sent for currently connected sessions. |
+
+The collector supports [OpenVPN status versions 1, 2 and 3](https://openvpn.net/community-docs/community-articles/openvpn-2-6-manual/).
+A complete, fresh snapshot with no clients reports zero usage. Missing,
+unreadable, incomplete, malformed, changing, or stale snapshots report unknown
+usage: JSON `null`, or omitted Prometheus samples. Availability flags remain
+present. The modification time is a freshness heuristic, not proof that the
+server is still running; after shutdown, a snapshot can remain fresh for the
+window above. Retry a partial snapshot on the next collection.
+
+All samples use the [Prometheus text format](https://prometheus.io/docs/instrumenting/exposition_formats/)
+and are gauges. Byte values describe only the sessions in the snapshot: they
+reset on reconnect and disappear on disconnect. They are not lifetime traffic
+counters or suitable inputs to `rate()`. No traffic history is stored.
+
+Exit status is 0 when a report is emitted, even if usage is unavailable; consumers
+should check `status_fresh`. Invalid settings return 1 with a generic error on
+stderr. An existing Prometheus textfile collector can consume the `.prom` output;
+publish scheduled exports by writing a temporary file in its directory and
+renaming it after the command succeeds. Installing or scheduling a collector is
+outside this command.
+
 ## Files and paths
 
 - Client profiles: `/data/openvpn/exports/` (mode `0600`)
