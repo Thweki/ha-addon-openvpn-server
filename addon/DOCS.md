@@ -31,6 +31,49 @@ Start with **Open Web UI -> Health**. Every check below is reported there togeth
 
 The add-on keeps running and retrying with backoff so the panel stays reachable, and prints the reason it stopped. Check the health panel and the diagnostics bundle.
 
+## Experimental client identity verification
+
+Restrict connections to a named device or a namespace of device certificates, even
+when other certificates were issued by the same CA. This is disabled by default:
+
+```yaml
+experimental_client_verify: false
+client_verify_mode: exact
+client_verify_name: ""
+```
+
+For example, issue certificates named `home-phone` and `home-laptop` using the
+panel or `openvpn-addon client create home-phone`, then enable:
+
+```yaml
+experimental_client_verify: true
+client_verify_mode: prefix
+client_verify_name: "home-"
+```
+
+Save the options and restart the add-on. The restart disconnects existing sessions;
+clients reconnect under the new policy. `home-phone` and `home-laptop` match, while
+`guest-phone` does not. For one certificate, use `exact` and its full client name.
+Matches are case-sensitive. Prefixes are literal, not wildcard or regular expressions;
+use a delimiter such as `home-` to avoid unintentionally matching `homeguest`.
+
+The name must be 1–63 ASCII letters, digits, underscores, dots or dashes and start
+with a letter or digit. An enabled policy with an empty name or invalid mode/name
+fails configuration validation. With the flag off, the policy fields are ignored.
+Set the flag back to `false` and restart to remove the restriction.
+
+The server uses OpenVPN's
+[`verify-x509-name`](https://openvpn.net/community-docs/community-articles/openvpn-2-6-manual/)
+to check the connecting client's certificate Common Name (CN); this does not check
+SANs or the server's hostname. CA trust, client certificate purpose and CRL checks
+still apply. Use prefix mode only with a CA whose certificate issuance you control.
+Matching a name never overrides revocation or expiry.
+
+Issuance and profile exports remain available for nonmatching names, but those
+certificates cannot connect while the policy is enabled. This includes the default
+`homeassistant` certificate in the example above. Existing matching profiles need
+no re-export, and fixed IPs and `duplicate_cn` keep their existing meaning.
+
 ## Diagnostics
 
 The panel's **Download diagnostics** produces a text bundle with the status payload, runtime details and the rendered `server.conf`. Attach it to bug reports; it does not contain private keys.

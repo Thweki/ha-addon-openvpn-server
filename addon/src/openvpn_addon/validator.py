@@ -55,6 +55,7 @@ def validate_config(config: AddonConfig) -> None:
         raise ValueError("crl_valid_days must be > 0")
 
     validate_client_name(config.client_name)
+    validate_client_verification(config)
 
     vpn_network = ipaddress.IPv4Network(config.vpn_network, strict=False)
     for item in config.local_networks:
@@ -63,6 +64,20 @@ def validate_config(config: AddonConfig) -> None:
             raise ValueError(
                 f"VPN subnet {vpn_network} overlaps with local_networks entry {local_network}"
             )
+
+
+def validate_client_verification(config: AddonConfig) -> None:
+    if not config.experimental_client_verify:
+        return
+    if config.client_verify_mode not in ("exact", "prefix"):
+        raise ValueError("client_verify_mode must be exact or prefix")
+    # Use the issued-client name alphabet and require the entire value to match:
+    # even a trailing newline must not become another OpenVPN directive.
+    if not isinstance(config.client_verify_name, str) or not CLIENT_NAME_RE.fullmatch(config.client_verify_name):
+        raise ValueError(
+            "client_verify_name must contain 1-63 letters, digits, underscores, dots, "
+            "or dashes, starting with a letter or digit"
+        )
 
 
 def validate_client_name(name: str) -> None:

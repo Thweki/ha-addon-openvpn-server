@@ -11,6 +11,7 @@ key ${server_key}
 crl-verify ${crl}
 tls-version-min ${tls_version_min}
 remote-cert-tls client
+${client_verify_line}
 persist-key
 persist-tun
 keepalive ${keepalive}

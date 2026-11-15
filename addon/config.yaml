@@ -42,6 +42,9 @@ options:
   tls_crypt: true
   client_to_client: false
   duplicate_cn: false
+  experimental_client_verify: false
+  client_verify_mode: "exact"
+  client_verify_name: ""
   fixed_client_ips: true
   publish_profiles_to_share: false
   crl_valid_days: 3650
@@ -70,6 +73,9 @@ schema:
   tls_crypt: bool
   client_to_client: bool
   duplicate_cn: bool
+  experimental_client_verify: bool
+  client_verify_mode: list(exact|prefix)
+  client_verify_name: str?
   fixed_client_ips: bool
   publish_profiles_to_share: bool
   crl_valid_days: int

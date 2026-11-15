@@ -5,6 +5,7 @@ from pathlib import Path
 from string import Template
 
 from .config import AddonConfig
+from .validator import validate_client_verification
 
 
 TEMPLATES_DIR = Path("/opt/openvpn_server/templates")
@@ -28,6 +29,7 @@ def render_server_config(config: AddonConfig) -> str:
         crl=config.crl_path,
         tls_crypt_line=_tls_crypt_line(config),
         client_config_dir_line=_client_config_dir_line(config),
+        client_verify_line=_client_verify_line(config),
         status_path=config.status_path,
         keepalive=config.keepalive,
         data_ciphers=_data_ciphers(config),
@@ -106,6 +108,14 @@ def _format_push_routes(networks: list[ipaddress._BaseNetwork]) -> str:
 
 def _tls_crypt_line(config: AddonConfig) -> str:
     return f"tls-crypt {config.tls_crypt_path}" if config.tls_crypt else ""
+
+
+def _client_verify_line(config: AddonConfig) -> str:
+    validate_client_verification(config)
+    if not config.experimental_client_verify:
+        return ""
+    match_type = "name" if config.client_verify_mode == "exact" else "name-prefix"
+    return f"verify-x509-name {config.client_verify_name} {match_type}"
 
 
 def _client_config_dir_line(config: AddonConfig) -> str:
