@@ -35,6 +35,46 @@ The add-on keeps running and retrying with backoff so the panel stays reachable,
 
 The panel's **Download diagnostics** produces a text bundle with the status payload, runtime details and the rendered `server.conf`. Attach it to bug reports; it does not contain private keys.
 
+## Experimental: automatic CRL renewal
+
+An expired certificate revocation list (CRL) prevents new VPN connections even when
+client certificates are still valid. To enable automatic maintenance, set this add-on
+option in Home Assistant and restart the add-on:
+
+```yaml
+experimental_crl_auto_renew: true
+```
+
+This option defaults to `false`. When enabled, the running add-on checks the CRL
+within five seconds of starting its request watcher and then hourly. It rebuilds
+the CRL when missing, expired, or within seven days of expiry. For a configured
+`crl_valid_days` below 14, the renewal window is half that lifetime instead, avoiding
+renewal on every check. New CRLs use the existing `crl_valid_days` option.
+
+This renews the **revocation list only**, not client/server certificates or keys.
+Existing revocations remain in effect. Client profiles need no redistribution, and
+OpenVPN need not restart: it rereads the CRL on connections and TLS renegotiation
+([OpenVPN documentation](https://openvpn.net/community-docs/revoking-certificates/)).
+
+Automatic signing uses EasyRSA's temporary-file publication and serializes with
+other add-on PKI commands while enabled. Do not run EasyRSA directly against the
+same PKI during maintenance. Missing PKI indexes and unreadable/malformed CRLs
+produce a warning instead of resetting PKI state. A failed check/signing attempt
+retries after one hour; monitor **Health** and the add-on log. Subprocess output is
+suppressed, and renewal logs never contain private keys. This requires the existing
+unattended CA key setup; an encrypted CA key cannot prompt for a passphrase.
+
+To disable, set the option to `false` and restart. The default behavior (startup
+and manual CRL rebuilds only) remains unchanged. Keep regular PKI backups before
+trying this experimental feature.
+
+Focused tests: `PYTHONPATH=addon/src python3 -m unittest discover -s tests -p test_crl_renewal.py -v`.
+The real signing test uses EasyRSA from PATH or `/usr/share/easy-rsa/easyrsa`;
+set `EASYRSA_TEST_BINARY` to test another installed binary. It creates a temporary
+CA, verifies that revoked clients remain rejected and valid clients still verify,
+and checks that signing failure preserves the previous CRL. Without EasyRSA/OpenSSL,
+that integration test skips; the remaining tests require only Python.
+
 ## Files and paths
 
 - Client profiles: `/data/openvpn/exports/` (mode `0600`)

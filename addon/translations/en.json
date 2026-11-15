@@ -74,6 +74,10 @@
       "name": "Also copy client profiles to /share",
       "description": "Off by default. The exported .ovpn contains the client private key and /share is readable by other add-ons; download profiles from the add-on panel instead."
     },
+    "experimental_crl_auto_renew": {
+      "name": "Experimental: automatically renew the CRL",
+      "description": "Off by default. Check the revocation list hourly and renew near expiry without restarting OpenVPN. Does not renew client certificates. Restart the add-on after changing this option."
+    },
     "crl_valid_days": {
       "name": "Revocation list validity (days)",
       "description": "How long the certificate revocation list stays valid. It is rebuilt at add-on startup, so keep this comfortably longer than your typical uptime."

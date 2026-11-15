@@ -1,10 +1,13 @@
 from __future__ import annotations
 
+import fcntl
 import ipaddress
 import json
 import os
 import ssl
 import subprocess
+import threading
+from contextlib import contextmanager
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
@@ -14,6 +17,7 @@ from .validator import validate_client_name
 
 
 EASYRSA = Path("/usr/share/easy-rsa/easyrsa")
+_MUTATION_LOCK = threading.Lock()
 
 STATUS_VALID = "valid"
 STATUS_REVOKED = "revoked"
@@ -242,6 +246,29 @@ class PkiManager:
         return completed.stdout.strip().partition("=")[2].strip() or None
 
     def _run(self, *args: str, cwd: Path, cn: str | None = None, days: str | None = None) -> None:
+        with self.mutation_lock():
+            self._run_unlocked(*args, cwd=cwd, cn=cn, days=days)
+
+    @contextmanager
+    def mutation_lock(self):
+        """Serialize automatic CRL signing with add-on PKI writers, including CLI processes."""
+        if self.config.experimental_crl_auto_renew is not True:
+            yield
+            return
+        with _MUTATION_LOCK:
+            # Outside pki/: init-pki may replace that directory.
+            path = self.config.pki_dir.parent / ".pki-mutation.lock"
+            descriptor = os.open(path, os.O_CREAT | os.O_RDWR | os.O_NOFOLLOW, 0o600)
+            try:
+                fcntl.flock(descriptor, fcntl.LOCK_EX)
+                yield
+            finally:
+                os.close(descriptor)
+
+    def _run_unlocked(
+        self, *args: str, cwd: Path, cn: str | None = None,
+        days: str | None = None, quiet: bool = False,
+    ) -> None:
         env = os.environ.copy()
         env["EASYRSA_BATCH"] = "1"
         env["EASYRSA_PKI"] = str(self.config.pki_dir)
@@ -250,4 +277,8 @@ class PkiManager:
             env["EASYRSA_REQ_CN"] = cn
         if days:
             env["EASYRSA_CERT_EXPIRE"] = days
-        subprocess.run([str(EASYRSA), *args], cwd=cwd, env=env, check=True)
+        output = (
+            {"stdout": subprocess.DEVNULL, "stderr": subprocess.DEVNULL, "stdin": subprocess.DEVNULL}
+            if quiet else {}
+        )
+        subprocess.run([str(EASYRSA), *args], cwd=cwd, env=env, check=True, **output)
