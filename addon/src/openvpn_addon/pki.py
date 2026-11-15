@@ -103,7 +103,9 @@ class PkiManager:
         self.refresh_crl()
 
     def client_status(self, client_name: str) -> str:
-        entries = self.index_entries()
+        return self._client_status_from_entries(client_name, self.index_entries())
+
+    def _client_status_from_entries(self, client_name: str, entries: dict[str, str]) -> str:
         status = entries.get(client_name)
         if status is None:
             if (self.config.pki_dir / "issued" / f"{client_name}.crt").exists():
@@ -126,7 +128,9 @@ class PkiManager:
         return entries
 
     def list_clients(self) -> list[ClientInfo]:
-        names = set(self.index_entries())
+        # Reuse one index snapshot for this listing, but never cache it across calls.
+        entries = self.index_entries()
+        names = set(entries)
         issued_dir = self.config.pki_dir / "issued"
         if issued_dir.exists():
             names.update(item.stem for item in issued_dir.glob("*.crt") if item.name != "server.crt")
@@ -134,7 +138,7 @@ class PkiManager:
 
         result: list[ClientInfo] = []
         for name in sorted(names):
-            status = self.client_status(name)
+            status = self._client_status_from_entries(name, entries)
             if status == STATUS_MISSING:
                 continue
             expires = self._cert_expiry(name)
