@@ -11,6 +11,7 @@ from typing import Any, Callable
 
 from . import network
 from .config import AddonConfig
+from .inventory import collect_inventory, render_inventory
 from .status import collect_status
 
 
@@ -111,6 +112,19 @@ def _build_handler(config: AddonConfig, actions: PanelActions) -> type[BaseHTTPR
             if path == "/api/diagnostics":
                 self._send_text(_diagnostics(config, actions))
                 return
+            if path in {"/api/clients/inventory.json", "/api/clients/inventory.csv"}:
+                output_format = path.rsplit(".", 1)[1]
+                try:
+                    body = render_inventory(collect_inventory(config.pki_dir), output_format)
+                except (OSError, ValueError):
+                    self._send_json(
+                        {"status": "error", "message": "Unable to read client inventory; check CA index."},
+                        HTTPStatus.INTERNAL_SERVER_ERROR,
+                    )
+                    return
+                content_type = "application/json" if output_format == "json" else "text/csv"
+                self._send_text(body, filename=f"client-inventory.{output_format}", content_type=content_type)
+                return
             profile = _match_client_route(path, "/api/clients/", "/profile")
             if profile:
                 try:
@@ -185,10 +199,10 @@ def _build_handler(config: AddonConfig, actions: PanelActions) -> type[BaseHTTPR
             self.end_headers()
             self.wfile.write(body)
 
-        def _send_text(self, text: str, filename: str | None = None) -> None:
+        def _send_text(self, text: str, filename: str | None = None, content_type: str = "text/plain") -> None:
             body = text.encode("utf-8")
             self.send_response(HTTPStatus.OK)
-            self.send_header("Content-Type", "text/plain; charset=utf-8")
+            self.send_header("Content-Type", f"{content_type}; charset=utf-8")
             self.send_header("Content-Length", str(len(body)))
             self.send_header("Cache-Control", "no-store")
             if filename:
@@ -284,6 +298,10 @@ code{background:rgba(127,127,127,.15);border-radius:4px;padding:1px 4px}
       <input type="text" id="newclient" placeholder="new client name">
       <button class="primary" id="issue">Issue</button>
     </div>
+    <div class="row">
+      <button data-inventory="json">Inventory JSON</button>
+      <button data-inventory="csv">Inventory CSV</button>
+    </div>
   </div>
 
   <div class="card" style="grid-column:1/-1">
@@ -348,7 +366,9 @@ document.addEventListener("click", async (event) => {
   const button = event.target.closest("button");
   if (!button) return;
   try {
-    if (button.dataset.download){
+    if (button.dataset.inventory){
+      window.location = `api/clients/inventory.${button.dataset.inventory}`;
+    } else if (button.dataset.download){
       window.location = `api/clients/${encodeURIComponent(button.dataset.download)}/profile`;
     } else if (button.dataset.revoke){
       if (!confirm(`Revoke ${button.dataset.revoke}?`)) return;
