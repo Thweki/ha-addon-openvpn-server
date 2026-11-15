@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+- Add `client_explicit_exit_notify` (default off) to include clean-disconnect
+  notifications in exported UDP client profiles. TCP profiles omit the directive.
+  Restart the add-on and download/re-import profiles after changing the option.
+
 ## 0.2.2
 
 ### Changed

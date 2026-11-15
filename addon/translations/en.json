@@ -18,6 +18,10 @@
       "name": "Transport protocol",
       "description": "UDP is faster and is the recommended default. Choose TCP only if your network blocks UDP."
     },
+    "client_explicit_exit_notify": {
+      "name": "Notify server when clients disconnect",
+      "description": "Off by default. Adds explicit-exit-notify 1 to UDP client profiles for prompt session cleanup on clean disconnect. Ignored for TCP. Restart the add-on, download fresh profiles and re-import them on devices after changing this option."
+    },
     "lan_networks": {
       "name": "Home LAN networks",
       "description": "Subnets VPN clients should reach, comma separated, for example 192.168.1.0/24."

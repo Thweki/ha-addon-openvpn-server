@@ -53,6 +53,7 @@ def render_client_config(config: AddonConfig, client_name: str) -> str:
         remote_host=remote_host,
         remote_port=remote_port,
         protocol=config.protocol,
+        explicit_exit_notify=_explicit_exit_notify(config) if config.client_explicit_exit_notify else "",
         data_ciphers=_data_ciphers(config),
         auth=config.auth,
         tls_version_min=TLS_VERSION_MIN,

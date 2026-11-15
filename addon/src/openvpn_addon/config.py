@@ -20,6 +20,7 @@ class AddonConfig:
     listen_port: int = 1194
     public_port: int = 1194
     protocol: str = "udp"
+    client_explicit_exit_notify: bool = False
     device: str = "tun"
     vpn_subnet: str = "10.8.0.0"
     vpn_netmask: str = "255.255.255.0"

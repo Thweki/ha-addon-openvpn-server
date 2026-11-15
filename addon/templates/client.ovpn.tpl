@@ -11,6 +11,7 @@ data-ciphers ${data_ciphers}
 tls-version-min ${tls_version_min}
 auth ${auth}
 verb 3
+${explicit_exit_notify}
 
 <ca>
 ${ca}

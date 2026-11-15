@@ -48,6 +48,16 @@ class ConfigLoadingTests(unittest.TestCase):
         config = self.load({"nat_enabled": True, "legacy_knob": "x", "another": 1})
         self.assertEqual(["another", "legacy_knob"], config.unknown_options)
 
+    def test_client_explicit_exit_notify_defaults_off(self):
+        self.assertIs(False, self.load({}).client_explicit_exit_notify)
+
+    def test_client_explicit_exit_notify_loads_boolean_options(self):
+        for value, expected in [(True, True), (False, False), ("true", True), ("false", False)]:
+            with self.subTest(value=value):
+                config = self.load({"client_explicit_exit_notify": value})
+                self.assertIs(expected, config.client_explicit_exit_notify)
+                self.assertEqual([], config.unknown_options)
+
     def test_scalar_types_are_coerced(self):
         config = self.load(
             {
