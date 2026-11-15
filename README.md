@@ -51,6 +51,9 @@ Field summary:
 - `nat_enabled`: required for clients to reach LAN devices
 - `dns`: DNS servers pushed to clients, comma-separated
 - `extra_routes`: optional extra pushed routes, comma-separated
+- `openvpn_verbosity`: optional server verbosity override (`0`–`11`); omit to keep
+  the existing `log_level` mapping. Save and restart the add-on to apply.
+  See [verbosity troubleshooting](addon/DOCS.md#openvpn-server-verbosity).
 
 ## The Add-on Panel
 

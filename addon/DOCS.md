@@ -33,6 +33,27 @@ The add-on keeps running and retrying with backoff so the panel stays reachable,
 
 ## Diagnostics
 
+### OpenVPN server verbosity
+
+For precise troubleshooting, set the optional `openvpn_verbosity` in the add-on
+configuration, then save and restart the **add-on**:
+
+```yaml
+openvpn_verbosity: 4
+```
+
+This overrides the server's `verb` directive with an integer from `0` to `11`.
+`0` logs fatal errors only; `1`–`4` cover normal operation, `5` adds packet
+read/write indicators, and `6`–`11` provide debug detail
+([OpenVPN manual](https://openvpn.net/community-docs/community-articles/openvpn-2-6-manual/)).
+Higher levels can produce substantial output; remove the option after troubleshooting
+and restart the add-on to restore the existing `log_level` mapping:
+`trace=7`, `debug=5`, `info=3`, `notice=3`, `warning=2`, `error=1`, `fatal=0`.
+The override is unset by default, so existing installations keep their behavior.
+Exported client profiles keep `verb 3`.
+
+### Diagnostic bundle
+
 The panel's **Download diagnostics** produces a text bundle with the status payload, runtime details and the rendered `server.conf`. Attach it to bug reports; it does not contain private keys.
 
 ## Files and paths

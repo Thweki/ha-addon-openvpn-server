@@ -41,7 +41,7 @@ def render_server_config(config: AddonConfig) -> str:
         push_routes=_format_push_routes(pushed_networks),
         inactive_timeout=_inactive_timeout(config.inactive_timeout),
         status_interval=config.status_interval,
-        verb=_verb_level(config.log_level),
+        verb=config.openvpn_verbosity if config.openvpn_verbosity is not None else _verb_level(config.log_level),
         explicit_exit_notify=_explicit_exit_notify(config),
     )
 

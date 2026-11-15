@@ -1,10 +1,12 @@
+import json
 import tempfile
 import unittest
 from pathlib import Path
 
 import openvpn_addon.config as config_module
 from openvpn_addon import renderer
-from openvpn_addon.config import AddonConfig
+from openvpn_addon.config import AddonConfig, load_config
+from openvpn_addon.validator import validate_config
 
 
 class RendererTests(unittest.TestCase):
@@ -83,6 +85,33 @@ class RealTemplateTests(unittest.TestCase):
         self.assertIn("remote-cert-tls client", output)
         self.assertNotIn("ecdh-curve", output)
         self.assertNotIn("\ncipher ", output)
+
+    def test_server_verbosity_preserves_log_level_mapping_when_unset(self):
+        mapping = {"trace": 7, "debug": 5, "info": 3, "notice": 3, "warning": 2, "error": 1, "fatal": 0}
+        for level, expected in mapping.items():
+            with self.subTest(level=level):
+                self.config.log_level = level
+                output = renderer.render_server_config(self.config)
+                directives = [line for line in output.splitlines() if line.startswith("verb ")]
+                self.assertEqual([f"verb {expected}"], directives)
+
+    def test_server_verbosity_override_from_options(self):
+        options = self.config.runtime_dir / "options.json"
+        for value in range(12):
+            with self.subTest(value=value):
+                options.write_text(
+                    json.dumps({"log_level": "debug", "openvpn_verbosity": value}), encoding="utf-8"
+                )
+                config = load_config(options)
+                validate_config(config)
+                output = renderer.render_server_config(config)
+                directives = [line for line in output.splitlines() if line.startswith("verb ")]
+                self.assertEqual([f"verb {value}"], directives)
+
+    def test_server_verbosity_override_does_not_change_client_profiles(self):
+        original = renderer.render_client_config(self.config, "demo")
+        self.config.openvpn_verbosity = 11
+        self.assertEqual(original, renderer.render_client_config(self.config, "demo"))
 
     def test_server_config_only_references_ccd_for_per_device_certificates(self):
         self.assertIn("client-config-dir", renderer.render_server_config(self.config))

@@ -98,6 +98,10 @@
       "name": "日志等级",
       "description": "等级越高，插件日志越详细。"
     },
+    "openvpn_verbosity": {
+      "name": "OpenVPN 服务端日志详细程度覆盖值",
+      "description": "可选的 0 到 11 整数。覆盖服务端的 log_level 映射；不填则沿用原映射（info = 3）。保存并重启插件后生效，不改变客户端配置。"
+    },
     "status_interval": {
       "name": "状态刷新间隔（秒）",
       "description": "在线客户端列表的写入频率。"

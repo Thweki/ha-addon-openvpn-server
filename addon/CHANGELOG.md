@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased
+
+### Added
+
+- Optional `openvpn_verbosity` (0–11) for precise server logging control. When
+  omitted, the existing `log_level` mapping is preserved. Save and restart the
+  add-on to apply; exported client profiles are unchanged.
+
 ## 0.2.2
 
 ### Changed
