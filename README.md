@@ -137,6 +137,10 @@ Client profiles embed the client private key and are written with mode `0600`. D
 
 Setting `publish_profiles_to_share: true` also copies them to `/share/openvpn_server/clients/`. That path is readable by other add-ons, so leave it off unless you need it.
 
+## Cipher Report
+
+Run `openvpn-addon ciphers` inside the add-on container for a read-only JSON report of configured data ciphers, fallback ciphers, TLS versions and TLS cipher suites. It flags recognized deprecated or legacy choices and identifies settings that need manual review. It reads the rendered `server.conf`, skips inline key material, and never opens referenced keys or client profiles. See [report details and limitations](addon/DOCS.md#cipher-report).
+
 ## Request Files (optional, scriptable)
 
 Write a file into `/share/openvpn_server/requests/` and it is applied while the add-on runs — no restart, no dropped sessions:
