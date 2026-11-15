@@ -27,6 +27,18 @@ Start with **Open Web UI -> Health**. Every check below is reported there togeth
 - The certificate may be revoked. The panel shows `revoked` and the client must be issued under a new name if the old key may have leaked.
 - Revoking rebuilds the CRL and briefly restarts OpenVPN so the change takes effect immediately.
 
+### Replace client profiles before certificates expire
+
+The **Health** panel, `openvpn-addon status`, and diagnostics include `client_expiry` alerts for active client certificates:
+
+- **Warning** when expiry is within 30 days (including exactly 30 days).
+- **Error** when the expiry time has been reached.
+- **Warning** when the certificate's expiry cannot be read or parsed.
+
+Each alert names the affected client. Revoked clients are excluded. Checks run when status or diagnostics are requested; these are not push notifications, and they never renew or revoke certificates automatically.
+
+Issue a replacement under a **new client name**, download and install its profile on the device, and verify it connects before revoking the old client. Re-exporting the old profile does not extend its certificate lifetime. Rebuilding the CRL does not renew client certificates either.
+
 ### The add-on log shows "OpenVPN exited with code ..."
 
 The add-on keeps running and retrying with backoff so the panel stays reachable, and prints the reason it stopped. Check the health panel and the diagnostics bundle.
