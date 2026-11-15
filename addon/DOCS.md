@@ -5,6 +5,33 @@ Full repository documentation:
 - [README.md](https://github.com/Thweki/ha-addon-openvpn-server/blob/main/README.md)
 - [README.zh-CN.md](https://github.com/Thweki/ha-addon-openvpn-server/blob/main/README.zh-CN.md)
 
+## Experimental server certificate pinning
+
+To bind newly exported client profiles to the current server certificate, set:
+
+```yaml
+experimental_server_pinning: true
+```
+
+This option defaults **off**. Save the add-on options and restart, then download
+fresh profiles from the panel or run `openvpn-addon client export <name>` inside
+the container and import the new profiles on your devices. Use clients supporting
+OpenVPN 2.6's [`peer-fingerprint` directive](https://openvpn.net/community-docs/community-articles/openvpn-2-6-manual/).
+Older clients may reject this directive.
+
+The exporter derives a SHA-256 fingerprint from `pki/issued/server.crt` and embeds
+it in each profile. The client requires that exact server certificate, preventing
+another server certificate from being accepted merely because it uses the same
+CA. The profile retains its CA and `remote-cert-tls server` settings. No server
+private key is read. If the server certificate cannot be parsed, export fails
+instead of producing an unpinned profile; existing exports are left intact.
+
+Replacing or renewing the server certificate changes its fingerprint: re-export
+and redistribute profiles before reconnecting those devices. Changing only the
+public endpoint does not change the pin. Existing downloaded profiles are never
+updated automatically. To disable pinning, set the option to `false`, restart,
+and re-export and re-import profiles; previously pinned copies remain pinned.
+
 ## Troubleshooting
 
 Start with **Open Web UI -> Health**. Every check below is reported there together with the reason.

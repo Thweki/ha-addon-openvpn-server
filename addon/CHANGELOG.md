@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+- Experimental server certificate pinning for exported client profiles, enabled
+  with `experimental_server_pinning` (default off). Requires a client supporting
+  `peer-fingerprint`; server certificate rotation requires fresh client profiles.
+
 ## 0.2.2
 
 ### Changed
