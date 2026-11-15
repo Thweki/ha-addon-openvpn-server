@@ -101,6 +101,13 @@ class RealTemplateTests(unittest.TestCase):
         self.config.protocol = "tcp"
         self.assertNotIn("explicit-exit-notify 1", renderer.render_server_config(self.config))
 
+    def test_server_connection_rate_limit_does_not_change_client_profile(self):
+        original = renderer.render_client_config(self.config, "demo")
+        self.config.experimental_connection_rate_limit = True
+        self.config.connection_rate_limit = 3
+        self.config.connection_rate_window = 120
+        self.assertEqual(original, renderer.render_client_config(self.config, "demo"))
+
 
 if __name__ == "__main__":
     unittest.main()

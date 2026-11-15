@@ -52,6 +52,10 @@ Field summary:
 - `dns`: DNS servers pushed to clients, comma-separated
 - `extra_routes`: optional extra pushed routes, comma-separated
 
+For an opt-in limit on bursts of new connections, see the
+[experimental connection rate limit](addon/DOCS.md#experimental-connection-rate-limit)
+(disabled by default).
+
 ## The Add-on Panel
 
 `Settings -> Add-ons -> OpenVPN Server -> Open Web UI` (administrators only):

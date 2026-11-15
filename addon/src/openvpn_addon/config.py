@@ -33,6 +33,9 @@ class AddonConfig:
     tls_crypt: bool = True
     client_to_client: bool = False
     duplicate_cn: bool = False
+    experimental_connection_rate_limit: bool = False
+    connection_rate_limit: int = 10
+    connection_rate_window: int = 60
     fixed_client_ips: bool = True
     publish_profiles_to_share: bool = False
     crl_valid_days: int = 3650

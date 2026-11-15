@@ -35,6 +35,7 @@ def render_server_config(config: AddonConfig) -> str:
         auth=config.auth,
         tls_version_min=TLS_VERSION_MIN,
         duplicate_cn=_bool_directive(config.duplicate_cn, "duplicate-cn"),
+        connection_rate_limit=_connection_rate_limit(config),
         client_to_client=_bool_directive(config.client_to_client, "client-to-client"),
         redirect_gateway=_redirect_gateway(config.redirect_gateway),
         push_dns=_push_dns(config.dns_servers),
@@ -119,6 +120,12 @@ def _tls_crypt_block(config: AddonConfig) -> str:
     if not config.tls_crypt:
         return ""
     return "<tls-crypt>\n" + _read_file(config.tls_crypt_path) + "\n</tls-crypt>"
+
+
+def _connection_rate_limit(config: AddonConfig) -> str:
+    if not config.experimental_connection_rate_limit:
+        return ""
+    return f"connect-freq {config.connection_rate_limit} {config.connection_rate_window}"
 
 
 def _inactive_timeout(seconds: int) -> str:

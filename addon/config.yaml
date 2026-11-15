@@ -42,6 +42,9 @@ options:
   tls_crypt: true
   client_to_client: false
   duplicate_cn: false
+  experimental_connection_rate_limit: false
+  connection_rate_limit: 10
+  connection_rate_window: 60
   fixed_client_ips: true
   publish_profiles_to_share: false
   crl_valid_days: 3650
@@ -70,6 +73,9 @@ schema:
   tls_crypt: bool
   client_to_client: bool
   duplicate_cn: bool
+  experimental_connection_rate_limit: bool
+  connection_rate_limit: int(1,1000)
+  connection_rate_window: int(1,3600)
   fixed_client_ips: bool
   publish_profiles_to_share: bool
   crl_valid_days: int

@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+- Add an experimental, default-off connection rate limit with configurable count
+  and time window, validation, and a Health warning about delayed reconnects.
+
 ## 0.2.2
 
 ### Changed
