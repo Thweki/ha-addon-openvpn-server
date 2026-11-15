@@ -30,6 +30,15 @@ class NetworkResult:
 def apply_network(config: AddonConfig) -> NetworkResult:
     """Reconcile forwarding/NAT rules. Never raises: the caller keeps the service running."""
     result = NetworkResult()
+    try:
+        return _apply_network(config, result)
+    except OSError as error:
+        result.errors.append(f"unable to configure networking: {error}")
+        print(f"ERROR: {result.errors[-1]}", flush=True)
+        return result
+
+
+def _apply_network(config: AddonConfig, result: NetworkResult) -> NetworkResult:
     result.ip_forward = _ensure_ip_forward(result)
 
     if not config.nat_enabled:
@@ -55,12 +64,12 @@ def apply_network(config: AddonConfig) -> NetworkResult:
         flush=True,
     )
 
-    _ensure_chain("nat")
-    _ensure_chain("filter")
+    _ensure_chain(result, "nat")
+    _ensure_chain(result, "filter")
 
     # Only our own chain is flushed, so rules added by the user or other add-ons are untouched.
-    _iptables("-t", "nat", "-F", CHAIN)
-    _iptables("-F", CHAIN)
+    _add(result, ["-t", "nat", "-F", CHAIN])
+    _add(result, ["-F", CHAIN])
 
     if out_interface:
         _add(result, ["-t", "nat", "-A", CHAIN, "-s", str(vpn_network), "-o", out_interface, "-j", "MASQUERADE"])
@@ -95,8 +104,16 @@ def remove_network(config: AddonConfig) -> None:
 def verify_network(config: AddonConfig) -> NetworkResult:
     """Read-only check of the current networking state, used by status and the panel."""
     result = NetworkResult()
+    try:
+        return _verify_network(config, result)
+    except OSError as error:
+        result.errors.append(f"unable to verify networking: {error}")
+        return result
+
+
+def _verify_network(config: AddonConfig, result: NetworkResult) -> NetworkResult:
     result.ip_forward = ip_forward_enabled()
-    result.out_interface = _lan_interface(config, NetworkResult())
+    result.out_interface = _lan_interface(config, result)
     if not config.nat_enabled:
         result.warnings.append("nat_enabled is off; LAN access through the VPN is disabled.")
         return result
@@ -117,6 +134,8 @@ def verify_network(config: AddonConfig) -> NetworkResult:
         result.missing_rules.append("filter FORWARD jump to " + CHAIN)
     if _iptables("-C", CHAIN, "-i", f"{config.device}0", "-s", str(vpn_network), "-j", "ACCEPT").returncode != 0:
         result.missing_rules.append(f"{config.device}0 inbound ACCEPT rule")
+    if not any(_iptables(*rule).returncode == 0 for rule in _stateful_return_rules(config, "-C")):
+        result.missing_rules.append(f"{config.device}0 return ACCEPT rule")
 
     result.applied = not result.missing_rules
     return result
@@ -147,14 +166,18 @@ def _ensure_ip_forward(result: NetworkResult) -> bool:
 
 
 def _add_stateful_return_rule(result: NetworkResult, config: AddonConfig) -> None:
-    modern = ["-A", CHAIN, "-o", f"{config.device}0", "-m", "conntrack", "--ctstate", "RELATED,ESTABLISHED", "-j", "ACCEPT"]
-    completed = subprocess.run(["iptables", *modern], capture_output=True, text=True)
-    if completed.returncode == 0:
-        return
-    legacy = ["-A", CHAIN, "-o", f"{config.device}0", "-m", "state", "--state", "RELATED,ESTABLISHED", "-j", "ACCEPT"]
-    completed = subprocess.run(["iptables", *legacy], capture_output=True, text=True)
-    if completed.returncode != 0:
-        _record(result, legacy, completed)
+    for rule in _stateful_return_rules(config, "-A"):
+        completed = _iptables(*rule)
+        if completed.returncode == 0:
+            return
+    _record(result, rule, completed)
+
+
+def _stateful_return_rules(config: AddonConfig, operation: str) -> list[list[str]]:
+    return [
+        [operation, CHAIN, "-o", f"{config.device}0", "-m", module, option, "RELATED,ESTABLISHED", "-j", "ACCEPT"]
+        for module, option in (("conntrack", "--ctstate"), ("state", "--state"))
+    ]
 
 
 def _lan_interface(config: AddonConfig, result: NetworkResult) -> str | None:
@@ -210,9 +233,9 @@ def _default_interface() -> str:
     return fields[fields.index("dev") + 1]
 
 
-def _ensure_chain(table: str) -> None:
+def _ensure_chain(result: NetworkResult, table: str) -> None:
     if _iptables("-t", table, "-L", CHAIN).returncode != 0:
-        _iptables("-t", table, "-N", CHAIN)
+        _add(result, ["-t", table, "-N", CHAIN])
 
 
 def _ensure_jump(result: NetworkResult, table: str, parent: str) -> None:
