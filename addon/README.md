@@ -39,6 +39,9 @@ Then open the add-on and use **Open Web UI** to see health, issue clients and do
 - **Health** — LAN forwarding, `ip_forward`, CRL validity, port mapping and configuration warnings.
 - **Clients** — who exists, who is online, the fixed VPN address, one-click issue/revoke and `.ovpn` download.
 - **Maintenance** — rebuild the CRL, restart OpenVPN, download a diagnostics bundle for bug reports.
+- **Recent status** — the latest 30 process starts, stops, exit/start failures, and observed client/health changes, newest first with local timestamps. Refreshes every 15 seconds while the page is visible; **Refresh page data** also updates it.
+
+History is shared across panel sessions and survives page reloads, but is kept only in memory and resets when the add-on restarts. Process events are recorded even when the panel is closed; client online/offline and health error/recovery observations are sampled only on panel status requests. Their timestamps indicate observation time, and short sessions or failures between refreshes may be missed. Clients already online at the first sample are shown as observed online. With `duplicate_cn`, observations track certificate names, not individual devices. No raw log messages, addresses, profile contents, or certificate operations are stored. This is a recent operational view, not a durable audit log. The panel's `api/status` response includes these entries as `recent_status`; the standalone CLI status command has no access to this in-memory history.
 
 ## Client Certificates
 

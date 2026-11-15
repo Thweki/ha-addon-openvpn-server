@@ -14,6 +14,7 @@ from typing import Any, Callable
 
 from .config import DATA_ROOT, AddonConfig, load_config
 from .health import collect_health, worst_status
+from .history import StatusHistory
 from .network import apply_network, ip_forward_enabled, remove_network
 from .pki import PkiManager
 from .renderer import effective_push_networks, render_client_config, render_server_config
@@ -211,19 +212,28 @@ class OpenVpnSupervisor:
         self._started_at: float | None = None
         self.restarts = 0
         self.last_exit_code: int | None = None
+        self.history = StatusHistory()
+        self._last_recorded_exit: subprocess.Popen[str] | None = None
 
     def start(self) -> None:
         with self._lock:
             if self.is_running():
                 return
-            self._process = subprocess.Popen(
-                ["openvpn", "--config", str(self.config.server_conf_path)],
-                stdout=subprocess.PIPE,
-                stderr=subprocess.STDOUT,
-                text=True,
-                bufsize=1,
-            )
+            if self._process is not None:
+                self._record_exit(self._process, self._process.poll())
+            try:
+                self._process = subprocess.Popen(
+                    ["openvpn", "--config", str(self.config.server_conf_path)],
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.STDOUT,
+                    text=True,
+                    bufsize=1,
+                )
+            except OSError:
+                self.history.record("error", "OpenVPN process could not start")
+                raise
             self._started_at = time.time()
+            self.history.record("start", "OpenVPN process started")
             threading.Thread(target=self._pump, args=(self._process,), daemon=True).start()
 
     def _pump(self, process: subprocess.Popen[str]) -> None:
@@ -252,7 +262,10 @@ class OpenVpnSupervisor:
     def stop(self, timeout: float = 10.0) -> None:
         with self._lock:
             process = self._process
-            if process is None or process.poll() is not None:
+            if process is None:
+                return
+            if process.poll() is not None:
+                self._record_exit(process, process.poll())
                 return
             process.terminate()
             try:
@@ -261,7 +274,17 @@ class OpenVpnSupervisor:
                 process.kill()
                 process.wait(timeout=timeout)
             finally:
+                self._record_exit(process, process.returncode, requested=True)
                 self._process = None
+
+    def _record_exit(self, process: subprocess.Popen[str], code: int | None, requested: bool = False) -> None:
+        with self._lock:
+            if code is None or process is not self._process or process is self._last_recorded_exit:
+                return
+            self._last_recorded_exit = process
+            kind = "stop" if requested or code == 0 else "error"
+            message = "OpenVPN process stopped" if requested else f"OpenVPN process exited (code {code})"
+            self.history.record(kind, message)
 
     @property
     def pid(self) -> int | None:
@@ -278,6 +301,7 @@ class OpenVpnSupervisor:
             if process is None:
                 return
             exit_code = process.wait()
+            self._record_exit(process, exit_code)
             if stop_event.is_set():
                 return
 
@@ -376,6 +400,7 @@ def start_panel(
         refresh_crl=refresh_crl,
         restart_openvpn=lambda: supervisor.restart("manual request"),
         runtime_info=runtime_info,
+        history=supervisor.history,
     )
 
     servers: list[PanelServer] = []
