@@ -40,6 +40,21 @@ Then open the add-on and use **Open Web UI** to see health, issue clients and do
 - **Clients** — who exists, who is online, the fixed VPN address, one-click issue/revoke and `.ovpn` download.
 - **Maintenance** — rebuild the CRL, restart OpenVPN, download a diagnostics bundle for bug reports.
 
+The Clients table's **Last seen** column helps identify unused credentials. It shows
+full 24-hour days since that common name was last observed online, including for
+offline or revoked clients. Use **Refresh page data** to refresh the age. No setting
+is required. Observation runs in the background even with the panel closed, and
+one timestamp per common name is saved in `/data/openvpn/runtime/client_last_seen.json`
+across add-on restarts. The status JSON also exposes `last_seen` (Unix seconds) and
+`inactive_days` (whole days), or `null` when unknown.
+
+This is an approximate last-online observation, not the start of the last session
+or an audit log. It uses the existing OpenVPN status snapshots and can miss short
+connections between updates. A stale snapshot does not reset the age. **Unknown**
+means no saved observation is available, not that the client has never connected;
+old connections cannot be reconstructed. Shared profiles are tracked by common
+name, not by individual device. This display never revokes or disconnects clients.
+
 ## Client Certificates
 
 Two modes, selected by `duplicate_cn`:

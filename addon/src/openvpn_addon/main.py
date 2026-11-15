@@ -18,7 +18,7 @@ from .network import apply_network, ip_forward_enabled, remove_network
 from .pki import PkiManager
 from .renderer import effective_push_networks, render_client_config, render_server_config
 from .requests import archive_request, reject_request, scan_client_requests, write_result
-from .status import collect_status, status_json
+from .status import collect_status, record_client_activity, status_json
 from .validator import config_warnings, validate_client_name, validate_config
 from .webui import PanelActions, PanelServer, panel_bind_addresses
 
@@ -298,7 +298,7 @@ class OpenVpnSupervisor:
 
 
 class RequestWatcher(threading.Thread):
-    """Applies /share request files without restarting the add-on."""
+    """Applies /share requests and records client activity without an open panel."""
 
     def __init__(self, config: AddonConfig, stop_event: threading.Event) -> None:
         super().__init__(name="request-watcher", daemon=True)
@@ -312,6 +312,10 @@ class RequestWatcher(threading.Thread):
                 process_pending_requests(self.config)
             except Exception as error:  # noqa: BLE001 - the watcher must never die
                 print(f"ERROR: request watcher failed: {error}", flush=True)
+            try:
+                record_client_activity(self.config)
+            except Exception as error:  # noqa: BLE001 - activity must not stop request processing
+                print(f"ERROR: client activity update failed: {error}", flush=True)
 
     def stop(self) -> None:
         self.stop_event.set()

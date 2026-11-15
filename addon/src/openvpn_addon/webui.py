@@ -278,8 +278,9 @@ code{background:rgba(127,127,127,.15);border-radius:4px;padding:1px 4px}
 
   <div class="card">
     <h2>Clients</h2>
-    <table><thead><tr><th>name</th><th>state</th><th>VPN IP</th><th>online</th><th></th></tr></thead>
+    <table><thead><tr><th>name</th><th>state</th><th>VPN IP</th><th>online</th><th>Last seen</th><th></th></tr></thead>
     <tbody id="clients"></tbody></table>
+    <p class="muted">Last seen is the time since the latest observed connection, in full days. Unknown means no observation is available; brief connections between status updates may be missed.</p>
     <div class="row">
       <input type="text" id="newclient" placeholder="new client name">
       <button class="primary" id="issue">Issue</button>
@@ -320,6 +321,11 @@ function badge(status){
   const cls = status === "ok" ? "ok" : status === "warn" ? "warn" : "err";
   return `<span class="badge ${cls}">${status}</span>`;
 }
+function lastSeenLabel(days){
+  if (!Number.isSafeInteger(days) || days < 0) return "unknown";
+  if (days === 0) return "less than 1 day ago";
+  return `${days} ${days === 1 ? "day" : "days"} ago`;
+}
 async function load(){
   const status = await api("api/status");
   const s = status.summary;
@@ -338,11 +344,12 @@ async function load(){
       <td>${c.status}</td>
       <td>${c.vpn_address || "—"}</td>
       <td>${c.online ? "yes" : "no"}</td>
+      <td>${lastSeenLabel(c.inactive_days)}</td>
       <td>
         <button data-download="${c.name}">.ovpn</button>
         ${c.status === "valid" ? `<button data-revoke="${c.name}">revoke</button>` : ""}
       </td>
-    </tr>`).join("") || `<tr><td colspan="5" class="muted">no clients yet</td></tr>`;
+    </tr>`).join("") || `<tr><td colspan="6" class="muted">no clients yet</td></tr>`;
 }
 document.addEventListener("click", async (event) => {
   const button = event.target.closest("button");
