@@ -97,7 +97,8 @@ class PkiManager:
         status = self.client_status(client_name)
         if status == STATUS_MISSING:
             raise FileNotFoundError(f"Client certificate not found: {client_name}")
-        if status == STATUS_REVOKED:
+        # An expired (E) certificate still needs revocation when it is replaced.
+        if status == STATUS_REVOKED and self.index_entries().get(client_name) != "E":
             raise ValueError(f"Client certificate is already revoked: {client_name}")
         self._run("revoke", client_name, cwd=self.config.pki_dir.parent)
         self.refresh_crl()
