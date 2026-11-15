@@ -131,6 +131,34 @@ openvpn-addon client revoke iphone
 openvpn-addon client list
 ```
 
+### Inspect the signed revocation list
+
+Inside the add-on container, print the CRL used by OpenVPN:
+
+```bash
+openvpn-addon crl show
+openvpn-addon crl show --format json
+```
+
+The report verifies the signature against the local `pki/ca.crt` and shows the
+CRL validity window, revoked count, and every revoked certificate's hexadecimal
+serial and revocation time (UTC). JSON includes a `schema_version` of `1`.
+It reads `pki/crl.pem`, so it shows the published revocations even when the CA
+index differs or contains newer changes. It does not read private keys, profiles,
+or the index, and it does not initialize, regenerate, or change any add-on state.
+It also works when add-on options are invalid.
+
+Exit status is `0` for a verified CRL within its validity window. An expired or
+not-yet-valid CRL still produces a report, with exit status `1`. Missing or
+unreadable files, an invalid signature, or unavailable OpenSSL produce a concise
+error on stderr and exit status `1`, without a partial report. A valid empty CRL
+explicitly reports zero revocations.
+
+This inspects the CRL on disk; it does not prove that a running OpenVPN process
+has loaded it, validate the CA trust chain, or confirm that a particular client
+can connect. Client names are intentionally absent: CRLs identify certificates
+by serial, including historical certificates issued under the same name.
+
 ## Client Profiles
 
 Client profiles embed the client private key and are written with mode `0600`. Download them from the panel.
