@@ -48,6 +48,8 @@ options:
   server_host: "0.0.0.0"
   extra_routes: ""
   inactive_timeout: 0
+  experimental_client_idle: false
+  client_idle_policies: []
   keepalive: "10 120"
   log_level: "info"
   status_interval: 30
@@ -76,6 +78,11 @@ schema:
   server_host: str
   extra_routes: str?
   inactive_timeout: int
+  experimental_client_idle: bool
+  client_idle_policies:
+    - client: str
+      timeout: int(0,2147483647)
+      min_bytes: int(0,2147483647)?
   keepalive: str
   log_level: str
   status_interval: int

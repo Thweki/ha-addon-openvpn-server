@@ -5,6 +5,57 @@ Full repository documentation:
 - [README.md](https://github.com/Thweki/ha-addon-openvpn-server/blob/main/README.md)
 - [README.zh-CN.md](https://github.com/Thweki/ha-addon-openvpn-server/blob/main/README.zh-CN.md)
 
+## Experimental: per-client idle policies
+
+Disconnect an occasional-use laptop after inactivity while leaving an always-on
+bridge connected. This is separate from the existing global `inactive_timeout`:
+clients without a policy continue to use that setting. The experiment defaults
+**off** and does not change server configuration, client profiles, or session
+behavior while disabled.
+
+To enable it, add the following in the add-on Configuration YAML, substituting
+your client certificate names, then save and restart the add-on:
+
+```yaml
+experimental_client_idle: true
+fixed_client_ips: true
+duplicate_cn: false
+client_idle_policies:
+  - client: laptop
+    timeout: 900
+  - client: phone
+    timeout: 600
+    min_bytes: 1024
+  - client: bridge
+    timeout: 0
+```
+
+- `timeout` is in seconds. Without `min_bytes` (or with `min_bytes: 0`), any
+  incoming or outgoing tunnel packet resets the idle timer.
+- With positive `min_bytes`, OpenVPN disconnects the client if combined tunnel
+  traffic is below that byte threshold during the timeout interval. This can
+  disconnect devices that generate only background traffic; start conservatively.
+- `timeout: 0` disables the client's idle timer, including an inherited global
+  `inactive_timeout`. It cannot be combined with positive `min_bytes`.
+- OpenVPN keepalive and TLS control packets do not count as activity. These are
+  OpenVPN's native [inactive timer semantics](https://build.openvpn.net/man/openvpn-2.6/openvpn.8.html).
+- Policies require `fixed_client_ips: true` and `duplicate_cn: false`, and are
+  applied through the existing per-client `ccd/` files. They do not push settings
+  to client apps or inspect packet contents. The server disconnects the affected
+  session; it does not revoke the certificate or prevent automatic reconnection.
+- Names must exactly match client certificate names. Duplicate names, reserved
+  names (`server`, `DEFAULT`), unknown fields, and invalid numbers are rejected.
+  Numeric values must be integers from 0 to 2147483647. A policy for a name not yet
+  issued stays dormant; only currently valid clients receive CCD files.
+
+To remove a policy, delete its entry. To disable all policies, set
+`experimental_client_idle: false`. Save and restart the add-on in either case;
+startup regenerates CCD files and clears the old policy directives. Existing
+connections do not reload edited CCD files, and a restart briefly disconnects all
+clients. Leave generated files alone and manage policies through configuration.
+The existing global `inactive_timeout` is retained when the experiment is disabled.
+The panel and CLI configuration warnings identify the experiment when enabled.
+
 ## Troubleshooting
 
 Start with **Open Web UI -> Health**. Every check below is reported there together with the reason.

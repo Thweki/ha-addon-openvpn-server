@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased
+
+- Experimental per-client idle disconnect policies, disabled by default. Opt in
+  with `experimental_client_idle` to set individual timeouts, low-traffic byte
+  thresholds, or exemptions from the global timeout through `client_idle_policies`.
+  Requires fixed client addresses and one certificate per device.
+
 ## 0.2.2
 
 ### Changed

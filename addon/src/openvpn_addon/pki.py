@@ -10,7 +10,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from .config import AddonConfig
-from .validator import validate_client_name
+from .validator import validate_client_name, validated_idle_policies
 
 
 EASYRSA = Path("/usr/share/easy-rsa/easyrsa")
@@ -170,6 +170,7 @@ class PkiManager:
 
     def ensure_client_ips(self, names: list[str]) -> dict[str, str]:
         """Assign a stable VPN address to every client and write its ccd entry."""
+        idle_policies = validated_idle_policies(self.config)
         if not self.config.uses_client_config_dir or not names:
             self._clear_ccd()
             return {}
@@ -199,8 +200,13 @@ class PkiManager:
             if stale.name not in assignments:
                 stale.unlink()
         for name, address in assignments.items():
+            content = f"ifconfig-push {address} {self.config.vpn_netmask}\n"
+            if name in idle_policies:
+                seconds, min_bytes = idle_policies[name]
+                # OpenVPN applies this timer to the client instance, not the server.
+                content += f"inactive {seconds}" + (f" {min_bytes}" if min_bytes else "") + "\n"
             (self.config.ccd_dir / name).write_text(
-                f"ifconfig-push {address} {self.config.vpn_netmask}\n",
+                content,
                 encoding="utf-8",
             )
         return assignments
