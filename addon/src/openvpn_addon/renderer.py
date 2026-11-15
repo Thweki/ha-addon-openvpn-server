@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import hashlib
 import ipaddress
+import subprocess
 from pathlib import Path
 from string import Template
 
@@ -57,10 +59,31 @@ def render_client_config(config: AddonConfig, client_name: str) -> str:
         auth=config.auth,
         tls_version_min=TLS_VERSION_MIN,
         tls_crypt_block=_tls_crypt_block(config),
+        server_pinning_line=_server_pinning_line(config),
         ca=_read_file(config.pki_dir / "ca.crt"),
         cert=_read_cert_body(config.pki_dir / "issued" / f"{client_name}.crt"),
         key=_read_file(config.pki_dir / "private" / f"{client_name}.key"),
     )
+
+
+def _server_pinning_line(config: AddonConfig) -> str:
+    if not config.experimental_server_pinning:
+        return ""
+    # Parse the public server certificate, never the server private key. Hash DER
+    # so PEM wrapping and Easy-RSA's text preamble do not affect the fingerprint.
+    try:
+        completed = subprocess.run(
+            ["openssl", "x509", "-in", str(config.pki_dir / "issued" / "server.crt"), "-outform", "DER"],
+            check=True,
+            capture_output=True,
+            timeout=10,
+        )
+    except (OSError, subprocess.SubprocessError) as error:
+        raise ValueError("Cannot pin server certificate; check pki/issued/server.crt and OpenSSL") from error
+    if not completed.stdout:
+        raise ValueError("Cannot pin server certificate; OpenSSL returned an empty certificate")
+    fingerprint = hashlib.sha256(completed.stdout).digest().hex(":").upper()
+    return f"peer-fingerprint {fingerprint}\n"
 
 
 def _resolve_remote(config: AddonConfig) -> tuple[str, int]:
