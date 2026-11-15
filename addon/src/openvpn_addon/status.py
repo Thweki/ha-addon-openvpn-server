@@ -5,7 +5,7 @@ from pathlib import Path
 
 from .config import AddonConfig
 from .health import collect_health, worst_status
-from .network import ip_forward_enabled, verify_network
+from .network import verify_network
 from .pki import PkiManager
 from .renderer import effective_push_networks
 from .validator import config_warnings
@@ -15,9 +15,10 @@ def collect_status(config: AddonConfig, pki: PkiManager | None = None) -> dict[s
     manager = pki or PkiManager(config)
     online = _parse_status(config.status_path)
     fixed_ips = _load_fixed_ips(config)
-    checks = collect_health(config, manager)
-    networks = effective_push_networks(config.push_routes, config.local_networks)
+    network_result = verify_network(config)
     crl = manager.crl_info()
+    checks = collect_health(config, manager, network=network_result, crl=crl)
+    networks = effective_push_networks(config.push_routes, config.local_networks)
 
     clients: list[dict[str, object]] = []
     for client in manager.list_clients():
@@ -35,8 +36,6 @@ def collect_status(config: AddonConfig, pki: PkiManager | None = None) -> dict[s
                 "connected_since": session.get("connected_since"),
             }
         )
-
-    network_result = _network_snapshot(config)
 
     return {
         "summary": {
@@ -59,8 +58,8 @@ def collect_status(config: AddonConfig, pki: PkiManager | None = None) -> dict[s
             "vpn_network": config.vpn_network,
             "local_networks": list(config.local_networks),
             "nat_enabled": config.nat_enabled,
-            "ip_forward": network_result["ip_forward"],
-            "out_interface": network_result["out_interface"],
+            "ip_forward": network_result.ip_forward,
+            "out_interface": network_result.out_interface,
         },
         "crl": {
             "last_update": crl.last_update,
@@ -81,14 +80,6 @@ def collect_status(config: AddonConfig, pki: PkiManager | None = None) -> dict[s
 
 def status_json(config: AddonConfig, pki: PkiManager | None = None) -> str:
     return json.dumps(collect_status(config, pki), ensure_ascii=False, indent=2)
-
-
-def _network_snapshot(config: AddonConfig) -> dict[str, object]:
-    result = verify_network(config)
-    return {
-        "ip_forward": ip_forward_enabled(),
-        "out_interface": result.out_interface,
-    }
 
 
 def _load_fixed_ips(config: AddonConfig) -> dict[str, str]:

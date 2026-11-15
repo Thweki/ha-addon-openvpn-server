@@ -4,7 +4,7 @@ from dataclasses import dataclass
 
 from .config import AddonConfig
 from .network import NetworkResult, verify_network
-from .pki import PkiManager
+from .pki import CrlInfo, PkiManager
 from .validator import config_warnings
 
 
@@ -23,14 +23,24 @@ class Check:
     detail: str
 
 
-def collect_health(config: AddonConfig, pki: PkiManager | None = None) -> list[Check]:
+def collect_health(
+    config: AddonConfig,
+    pki: PkiManager | None = None,
+    *,
+    network: NetworkResult | None = None,
+    crl: CrlInfo | None = None,
+) -> list[Check]:
+    """Build checks, reusing observations supplied by the current status request."""
     checks: list[Check] = []
 
-    network = verify_network(config)
+    if network is None:
+        network = verify_network(config)
     checks.extend(_network_checks(config, network))
 
-    manager = pki or PkiManager(config)
-    checks.append(_crl_check(config, manager))
+    if crl is None:
+        manager = pki or PkiManager(config)
+        crl = manager.crl_info()
+    checks.append(_crl_check(crl))
 
     if config.public_endpoint.strip():
         checks.append(Check("public_endpoint", OK, f"clients connect to {config.public_address}:{config.public_port}"))
@@ -116,8 +126,7 @@ def _network_checks(config: AddonConfig, network: NetworkResult) -> list[Check]:
     return checks
 
 
-def _crl_check(config: AddonConfig, pki: PkiManager) -> Check:
-    info = pki.crl_info()
+def _crl_check(info: CrlInfo) -> Check:
     if info.next_update is None:
         return Check("crl", ERROR, "certificate revocation list is missing or unreadable")
 
