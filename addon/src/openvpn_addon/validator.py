@@ -14,6 +14,9 @@ CRL_REBUILD_WARNING_DAYS = 90
 
 
 def validate_config(config: AddonConfig) -> None:
+    if config.tls_crypt and config.experimental_tls_auth:
+        raise ValueError("tls_crypt and experimental_tls_auth cannot both be enabled; choose one control-channel mode")
+
     if config.protocol not in PROTOCOLS:
         raise ValueError(f"Unsupported protocol: {config.protocol}")
 

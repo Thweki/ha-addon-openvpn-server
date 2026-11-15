@@ -5,6 +5,37 @@ Full repository documentation:
 - [README.md](https://github.com/Thweki/ha-addon-openvpn-server/blob/main/README.md)
 - [README.zh-CN.md](https://github.com/Thweki/ha-addon-openvpn-server/blob/main/README.zh-CN.md)
 
+## Experimental tls-auth compatibility
+
+`tls-crypt` is already enabled by default and remains the recommended mode.
+For clients that require `tls-auth`, opt in through the add-on configuration:
+
+```yaml
+tls_crypt: false
+experimental_tls_auth: true
+```
+
+The experimental flag defaults to `false`. Enabling both options is rejected
+before startup changes any files. Restart the add-on after changing modes, then
+download a fresh profile for **every client** from the panel (or use
+`openvpn-addon client export NAME`) and re-import it on each device. Existing
+profiles will not connect until updated. Previously exported files are not all
+automatically refreshed; replace any copies you distributed, including `/share`
+copies if publishing is enabled.
+
+The server uses `tls-auth` direction `0`; exported profiles embed the same static
+key with `key-direction 1`. The existing `/data/openvpn/pki/ta.key` is reused
+across restarts and mode changes; switching modes does not rotate it or replace
+certificates. The configured `auth` digest is used on both sides. This adds
+control-packet authentication without the extra control-channel encryption of
+`tls-crypt`; TLS and data-channel encryption remain enabled. See the
+[OpenVPN manual](https://openvpn.net/community-docs/community-articles/openvpn-2-6-manual/)
+for protocol details. This option does not change cipher or TLS-version support.
+
+To return to the default mode, set `experimental_tls_auth: false` and
+`tls_crypt: true`, restart, and refresh every client's profile again. Setting both
+to `false` retains the existing behavior with no static-key control-channel wrap.
+
 ## Troubleshooting
 
 Start with **Open Web UI -> Health**. Every check below is reported there together with the reason.

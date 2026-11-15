@@ -58,6 +58,10 @@
       "name": "Use tls-crypt",
       "description": "Encrypts and authenticates the control channel and hides the VPN from port scanners. Keep it on."
     },
+    "experimental_tls_auth": {
+      "name": "Experimental: use tls-auth",
+      "description": "Off by default. For clients requiring tls-auth: disable tls_crypt, enable this, restart the add-on, then re-export and re-import every client profile. Authenticates control packets without tls-crypt's extra encryption."
+    },
     "client_to_client": {
       "name": "Allow clients to reach each other",
       "description": "Usually off for home use."

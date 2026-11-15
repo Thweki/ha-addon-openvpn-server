@@ -27,3 +27,4 @@ ${key}
 </key>
 
 ${tls_crypt_block}
+${tls_auth_block}

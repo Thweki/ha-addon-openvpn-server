@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+- Add experimental, opt-in `tls-auth` control-channel protection for clients that
+  require it. `experimental_tls_auth` defaults off and requires `tls_crypt: false`.
+  Switching modes requires a restart and fresh profiles on every client.
+
 ## 0.2.2
 
 ### Changed
