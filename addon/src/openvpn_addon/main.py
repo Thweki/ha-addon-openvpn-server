@@ -12,6 +12,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Callable
 
+from .client_network import check_client_networks, parse_client_network
 from .config import DATA_ROOT, AddonConfig, load_config
 from .health import collect_health, worst_status
 from .network import apply_network, ip_forward_enabled, remove_network
@@ -42,6 +43,12 @@ def build_parser() -> argparse.ArgumentParser:
     _command(subparsers, "init", cmd_init)
     _command(subparsers, "run", cmd_run)
     _command(subparsers, "status", cmd_status)
+
+    check_network = subparsers.add_parser(
+        "check-client-network", help="Check client LAN subnets for overlaps with configured VPN routes"
+    )
+    check_network.add_argument("networks", nargs="+", type=parse_client_network, metavar="CIDR")
+    check_network.set_defaults(func=cmd_check_client_network)
 
     client = subparsers.add_parser("client", help="Manage OpenVPN client certificates and exports")
     client_sub = client.add_subparsers(dest="client_command", required=True)
@@ -144,6 +151,17 @@ def cmd_status(_: argparse.Namespace) -> int:
     config = load_and_validate()
     print(status_json(config))
     return 0
+
+
+def cmd_check_client_network(args: argparse.Namespace) -> int:
+    try:
+        config = load_and_validate()
+        report = check_client_networks(config, args.networks)
+    except (OSError, ValueError, TypeError):
+        print("Unable to load or validate add-on configuration.", file=sys.stderr)
+        return 2
+    print(json.dumps(report, indent=2))
+    return 1 if report["conflicts"] else 0
 
 
 def cmd_client_create(args: argparse.Namespace) -> int:
