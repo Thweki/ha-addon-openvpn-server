@@ -199,8 +199,18 @@ class PkiManager:
             if stale.name not in assignments:
                 stale.unlink()
         for name, address in assignments.items():
+            entry = f"ifconfig-push {address} {self.config.vpn_netmask}\n"
+            if self.config.experimental_ipv6:
+                ipv6_network = ipaddress.IPv6Network(self.config.vpn_ipv6_subnet)
+                # OpenVPN cannot combine static IPv4 with pooled IPv6. Embed the
+                # IPv4 address above OpenVPN's bounded dynamic IPv6 pool.
+                ipv6_address = (
+                    ipv6_network.network_address + (1 << 32) + int(ipaddress.IPv4Address(address))
+                )
+                ipv6_server = ipv6_network.network_address + 1
+                entry += f"ifconfig-ipv6-push {ipv6_address}/64 {ipv6_server}\n"
             (self.config.ccd_dir / name).write_text(
-                f"ifconfig-push {address} {self.config.vpn_netmask}\n",
+                entry,
                 encoding="utf-8",
             )
         return assignments

@@ -5,6 +5,49 @@ Full repository documentation:
 - [README.md](https://github.com/Thweki/ha-addon-openvpn-server/blob/main/README.md)
 - [README.zh-CN.md](https://github.com/Thweki/ha-addon-openvpn-server/blob/main/README.zh-CN.md)
 
+## Experimental IPv6 tunnel addresses
+
+IPv6 tunnel support is **off by default**. It adds a second address family inside
+the existing VPN, so clients can reach IPv6 services on the VPN server. Enable it
+in the add-on options, then restart the add-on and reconnect clients:
+
+```yaml
+experimental_ipv6: true
+vpn_ipv6_subnet: "fd42:6f70:656e:8::/64"
+device: tun
+```
+
+Choose a dedicated unique-local (ULA) or assigned global-unicast **/64 network**
+that does not overlap your LAN, client networks or other VPNs. Host bits must be
+zero. The default is an example ULA; choose your own prefix if it conflicts.
+The host and client operating systems must have IPv6 enabled on their TUN devices.
+
+The server uses the prefix's `::1` address (in this example,
+`fd42:6f70:656e:8::1`). OpenVPN assigns IPv6 addresses to clients and pushes their
+tunnel configuration using
+[`server-ipv6`](https://openvpn.net/community-docs/community-articles/openvpn-2-6-manual/).
+Existing exported profiles already accept server pushes; they do not need to be
+reissued. After reconnecting, test with `ping -6 fd42:6f70:656e:8::1` from a client
+whose firewall allows ICMPv6. Services must listen on IPv6 to be reachable there.
+For client-to-client access, the existing `client_to_client` option must be enabled.
+
+This feature configures **tunnel addressing only**. The public endpoint and
+transport options are unchanged. It does not configure IPv6 LAN routes, DNS,
+forwarding, firewall rules or NAT. `nat_enabled`, `lan_networks`, `extra_routes`,
+and `redirect_gateway` continue to apply to IPv4 only. With `fixed_client_ips`
+and a separate certificate per device, each client also gets a stable IPv6
+address derived from its saved IPv4 address (for example `10.8.0.2` maps to
+`fd42:6f70:656e:8:0:1:a08:2`). These addresses sit above OpenVPN's dynamic pool;
+no separate IPv6 lease database is needed. Otherwise OpenVPN assigns dynamic
+IPv6 addresses. Changing the IPv6 prefix changes all IPv6 assignments.
+IPv6 internet traffic is neither redirected nor
+blocked, even when `redirect_gateway` is enabled. Existing health checks cover
+IPv4 forwarding and do not verify IPv6 connectivity.
+
+To disable, set `experimental_ipv6: false`, restart and reconnect clients. The
+saved IPv6 prefix is ignored while disabled and no IPv6 server directive is
+rendered. No host IPv6 settings or firewall rules are changed by this feature.
+
 ## Troubleshooting
 
 Start with **Open Web UI -> Health**. Every check below is reported there together with the reason.

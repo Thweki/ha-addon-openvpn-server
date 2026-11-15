@@ -35,6 +35,8 @@ options:
   redirect_gateway: false
   vpn_subnet: "10.8.0.0"
   vpn_netmask: "255.255.255.0"
+  experimental_ipv6: false
+  vpn_ipv6_subnet: "fd42:6f70:656e:8::/64"
   dns: "1.1.1.1, 8.8.8.8"
   device: "tun"
   cipher: "AES-256-GCM"
@@ -63,6 +65,8 @@ schema:
   redirect_gateway: bool
   vpn_subnet: str
   vpn_netmask: str
+  experimental_ipv6: bool?
+  vpn_ipv6_subnet: str?
   dns: str
   device: str
   cipher: str

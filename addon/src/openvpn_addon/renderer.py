@@ -22,6 +22,10 @@ def render_server_config(config: AddonConfig) -> str:
         device=config.device,
         vpn_subnet=config.vpn_subnet,
         vpn_netmask=config.vpn_netmask,
+        server_ipv6=(
+            f"server-ipv6 {ipaddress.IPv6Network(config.vpn_ipv6_subnet)}"
+            if config.experimental_ipv6 else ""
+        ),
         server_cert=config.pki_dir / "issued" / "server.crt",
         server_key=config.pki_dir / "private" / "server.key",
         ca_cert=config.pki_dir / "ca.crt",

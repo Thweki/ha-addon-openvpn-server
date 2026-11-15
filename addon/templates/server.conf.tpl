@@ -5,6 +5,7 @@ user root
 group root
 topology subnet
 server ${vpn_subnet} ${vpn_netmask}
+${server_ipv6}
 ca ${ca_cert}
 cert ${server_cert}
 key ${server_key}
