@@ -1,6 +1,9 @@
 from __future__ import annotations
 
 import json
+import os
+import tempfile
+import time
 from pathlib import Path
 
 from .config import AddonConfig
@@ -14,6 +17,8 @@ from .validator import config_warnings
 def collect_status(config: AddonConfig, pki: PkiManager | None = None) -> dict[str, object]:
     manager = pki or PkiManager(config)
     online = _parse_status(config.status_path)
+    now = int(time.time())
+    last_seen = _load_last_seen(config, now)
     fixed_ips = _load_fixed_ips(config)
     checks = collect_health(config, manager)
     networks = effective_push_networks(config.push_routes, config.local_networks)
@@ -33,6 +38,8 @@ def collect_status(config: AddonConfig, pki: PkiManager | None = None) -> dict[s
                 "bytes_received": session.get("bytes_received"),
                 "bytes_sent": session.get("bytes_sent"),
                 "connected_since": session.get("connected_since"),
+                "last_seen": last_seen.get(client.name),
+                "inactive_days": (now - last_seen[client.name]) // 86400 if client.name in last_seen else None,
             }
         )
 
@@ -81,6 +88,56 @@ def collect_status(config: AddonConfig, pki: PkiManager | None = None) -> dict[s
 
 def status_json(config: AddonConfig, pki: PkiManager | None = None) -> str:
     return json.dumps(collect_status(config, pki), ensure_ascii=False, indent=2)
+
+
+def record_client_activity(config: AddonConfig) -> None:
+    """Called by the background watcher, even when nobody has the panel open.
+
+    Use the snapshot's mtime, not the poll time: a stopped server can leave a
+    status file behind. Keep only the latest observation per common name.
+    """
+    try:
+        before = config.status_path.stat()
+        online = _parse_status(config.status_path)
+        after = config.status_path.stat()
+    except FileNotFoundError:
+        return
+    if (before.st_ino, before.st_size, before.st_mtime_ns) != (after.st_ino, after.st_size, after.st_mtime_ns):
+        return  # OpenVPN rewrote the snapshot while we read it; retry next poll.
+    now = int(time.time())
+    observed_at = int(before.st_mtime)
+    if not online or not 0 < observed_at <= now:
+        return
+    previous = _load_last_seen(config, now)
+    updated = dict(previous)
+    for name in online:
+        updated[name] = max(previous.get(name, 0), observed_at)
+    if updated == previous:
+        return
+    path = config.runtime_dir / "client_last_seen.json"
+    # The watcher is the only writer. Atomic replacement keeps concurrent panel
+    # and CLI readers from seeing partial JSON; mkstemp gives owner-only access.
+    fd, temporary = tempfile.mkstemp(dir=path.parent, prefix=".client_last_seen-")
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as stream:
+            json.dump(updated, stream, sort_keys=True)
+            stream.write("\n")
+        os.replace(temporary, path)
+    finally:
+        Path(temporary).unlink(missing_ok=True)
+
+
+def _load_last_seen(config: AddonConfig, now: int) -> dict[str, int]:
+    try:
+        payload = json.loads((config.runtime_dir / "client_last_seen.json").read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return {}
+    if not isinstance(payload, dict):
+        return {}
+    return {
+        name: timestamp for name, timestamp in payload.items()
+        if type(timestamp) is int and 0 < timestamp <= now
+    }
 
 
 def _network_snapshot(config: AddonConfig) -> dict[str, object]:
