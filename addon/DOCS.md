@@ -35,6 +35,35 @@ The add-on keeps running and retrying with backoff so the panel stays reachable,
 
 The panel's **Download diagnostics** produces a text bundle with the status payload, runtime details and the rendered `server.conf`. Attach it to bug reports; it does not contain private keys.
 
+## Importing a settings snapshot
+
+From a shell inside the add-on container, validate a JSON settings snapshot made
+by `backup-config` (introduced separately in PR #20):
+
+```sh
+openvpn-addon import-config /data/openvpn-settings.json --check
+openvpn-addon import-config /data/openvpn-settings.json --output /data/imported-options.json
+```
+
+`--check` writes nothing. `--output` stages a complete, owner-only (`0600`)
+options file atomically; its directory must exist and its filename must be new.
+Existing files and destination symlinks are refused. Neither mode reads current
+settings, changes live settings, restarts OpenVPN, or accesses PKI.
+
+To finish restoring in Home Assistant, copy the staged settings into the add-on
+Configuration editor, save, and restart. The command does not update Supervisor's
+stored options. It never prints snapshot contents or input paths. Keep both files
+private because they include endpoint and network details.
+
+Only complete snapshots using this version's option names and JSON types are
+accepted (including string `dns`, `lan_networks`, and `extra_routes`). Missing,
+unknown, duplicate, or PKI keys, nested objects, inline key/certificate material,
+unsafe directive text, invalid settings, and files larger than 64 KiB are rejected
+with a nonzero exit status before an output is created. Legacy aliases and partial
+configuration files are not snapshots. This restores settings only; recovering
+certificates, private keys, revocations, or fixed client assignments requires a
+full Home Assistant backup.
+
 ## Files and paths
 
 - Client profiles: `/data/openvpn/exports/` (mode `0600`)

@@ -13,6 +13,7 @@ from pathlib import Path
 from typing import Any, Callable
 
 from .config import DATA_ROOT, AddonConfig, load_config
+from .config_import import import_config
 from .health import collect_health, worst_status
 from .network import apply_network, ip_forward_enabled, remove_network
 from .pki import PkiManager
@@ -42,6 +43,13 @@ def build_parser() -> argparse.ArgumentParser:
     _command(subparsers, "init", cmd_init)
     _command(subparsers, "run", cmd_run)
     _command(subparsers, "status", cmd_status)
+
+    importer = subparsers.add_parser("import-config", help="Validate and stage a settings-only snapshot")
+    importer.add_argument("snapshot", type=Path, help="JSON snapshot created by backup-config")
+    target = importer.add_mutually_exclusive_group(required=True)
+    target.add_argument("--check", action="store_true", help="Validate without writing any files")
+    target.add_argument("--output", type=Path, help="New options file in an existing directory")
+    importer.set_defaults(func=cmd_import_config)
 
     client = subparsers.add_parser("client", help="Manage OpenVPN client certificates and exports")
     client_sub = client.add_subparsers(dest="client_command", required=True)
@@ -143,6 +151,25 @@ def cmd_run(_: argparse.Namespace) -> int:
 def cmd_status(_: argparse.Namespace) -> int:
     config = load_and_validate()
     print(status_json(config))
+    return 0
+
+
+def cmd_import_config(args: argparse.Namespace) -> int:
+    try:
+        import_config(args.snapshot, args.output)
+    except FileExistsError:
+        print("Configuration import failed: destination already exists; choose a new file.", file=sys.stderr)
+        return 1
+    except (ValueError, RecursionError):
+        print("Configuration import failed: invalid settings-only snapshot.", file=sys.stderr)
+        return 1
+    except OSError:
+        print("Configuration import failed: unable to read snapshot or write destination.", file=sys.stderr)
+        return 1
+    if args.output is None:
+        print("Configuration snapshot valid (settings only).", flush=True)
+    else:
+        print("Configuration import staged. Apply the values in Home Assistant Configuration, then restart.", flush=True)
     return 0
 
 
