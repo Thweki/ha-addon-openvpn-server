@@ -105,27 +105,28 @@ def _load_fixed_ips(config: AddonConfig) -> dict[str, str]:
 
 
 def _parse_status(path: Path) -> dict[str, dict[str, str]]:
+    """Read the named CLIENT_LIST columns emitted by status-version 2."""
     if not path.exists():
         return {}
     results: dict[str, dict[str, str]] = {}
-    in_section = False
+    columns: list[str] = []
+    fields = {
+        "common_name": "Common Name",
+        "real_address": "Real Address",
+        "virtual_address": "Virtual Address",
+        "bytes_received": "Bytes Received",
+        "bytes_sent": "Bytes Sent",
+        "connected_since": "Connected Since",
+    }
     for line in path.read_text(encoding="utf-8", errors="replace").splitlines():
-        if line.startswith("Common Name,"):
-            in_section = True
-            continue
-        if in_section and line.startswith("ROUTING TABLE"):
-            break
-        if not in_section or not line:
-            continue
         parts = line.split(",")
-        if len(parts) < 5:
+        if parts[:2] == ["HEADER", "CLIENT_LIST"]:
+            columns = parts[2:]
             continue
-        results[parts[0]] = {
-            "common_name": parts[0],
-            "real_address": parts[1],
-            "virtual_address": parts[2],
-            "bytes_received": parts[3],
-            "bytes_sent": parts[4],
-            "connected_since": parts[5] if len(parts) > 5 else "",
-        }
+        if parts[0] != "CLIENT_LIST" or not columns:
+            continue
+        row = dict(zip(columns, parts[1:]))
+        if not all(column in row for column in fields.values()) or not row["Common Name"]:
+            continue
+        results[row["Common Name"]] = {key: row[column] for key, column in fields.items()}
     return results

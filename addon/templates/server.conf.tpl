@@ -27,5 +27,6 @@ ${push_dns}
 ${push_routes}
 ${client_config_dir_line}
 status ${status_path} ${status_interval}
+status-version 2
 verb ${verb}
 ${explicit_exit_notify}
