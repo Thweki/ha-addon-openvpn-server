@@ -101,6 +101,46 @@ class RealTemplateTests(unittest.TestCase):
         self.config.protocol = "tcp"
         self.assertNotIn("explicit-exit-notify 1", renderer.render_server_config(self.config))
 
+    def test_client_http_proxy_is_absent_by_default(self):
+        self.assertNotIn("http-proxy", renderer.render_client_config(self.config, "demo"))
+
+    def test_client_http_proxy_is_only_added_to_client_profile(self):
+        self.config.protocol = "tcp"
+        server_before = renderer.render_server_config(self.config)
+        self.config.experimental_client_http_proxy = True
+        self.config.client_http_proxy_host = "proxy.example.com"
+        self.config.client_http_proxy_port = 3128
+        for tls_crypt in [True, False]:
+            with self.subTest(tls_crypt=tls_crypt):
+                self.config.tls_crypt = tls_crypt
+                output = renderer.render_client_config(self.config, "demo")
+                self.assertEqual(1, output.splitlines().count("http-proxy proxy.example.com 3128"))
+                self.assertIn("remote vpn.example.com 1194\n", output)
+                self.assertIn("proto tcp\n", output)
+                self.assertIn("remote-cert-tls server\n", output)
+                self.assertEqual(tls_crypt, "<tls-crypt>" in output)
+        self.config.tls_crypt = True
+        self.assertEqual(server_before, renderer.render_server_config(self.config))
+
+    def test_disabling_client_http_proxy_restores_profile(self):
+        self.config.protocol = "tcp"
+        original = renderer.render_client_config(self.config, "demo")
+        self.config.experimental_client_http_proxy = True
+        self.config.client_http_proxy_host = "192.0.2.10"
+        self.assertIn("http-proxy 192.0.2.10 8080\n", renderer.render_client_config(self.config, "demo"))
+        self.config.experimental_client_http_proxy = False
+        self.assertEqual(original, renderer.render_client_config(self.config, "demo"))
+
+    def test_client_http_proxy_render_rejects_invalid_settings(self):
+        self.config.experimental_client_http_proxy = True
+        self.config.client_http_proxy_host = "proxy.example.com"
+        with self.assertRaisesRegex(ValueError, "requires protocol: tcp"):
+            renderer.render_client_config(self.config, "demo")
+        self.config.protocol = "tcp"
+        self.config.client_http_proxy_host = "proxy\nverb 11"
+        with self.assertRaisesRegex(ValueError, "client_http_proxy_host"):
+            renderer.render_client_config(self.config, "demo")
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+- Experimental client HTTP CONNECT proxy support for exported profiles, disabled
+  by default. Requires TCP and a proxy without authentication; validates the
+  proxy host and port before rendering.
+
 ## 0.2.2
 
 ### Changed

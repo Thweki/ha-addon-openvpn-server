@@ -5,6 +5,7 @@ from pathlib import Path
 from string import Template
 
 from .config import AddonConfig
+from .validator import validate_client_http_proxy
 
 
 TEMPLATES_DIR = Path("/opt/openvpn_server/templates")
@@ -47,11 +48,16 @@ def render_server_config(config: AddonConfig) -> str:
 
 
 def render_client_config(config: AddonConfig, client_name: str) -> str:
+    validate_client_http_proxy(config)
     template = Template((TEMPLATES_DIR / "client.ovpn.tpl").read_text(encoding="utf-8"))
     remote_host, remote_port = _resolve_remote(config)
     return template.substitute(
         remote_host=remote_host,
         remote_port=remote_port,
+        http_proxy_line=(
+            f"http-proxy {config.client_http_proxy_host} {config.client_http_proxy_port}\n"
+            if config.experimental_client_http_proxy else ""
+        ),
         protocol=config.protocol,
         data_ciphers=_data_ciphers(config),
         auth=config.auth,

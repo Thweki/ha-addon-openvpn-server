@@ -17,6 +17,8 @@ def validate_config(config: AddonConfig) -> None:
     if config.protocol not in PROTOCOLS:
         raise ValueError(f"Unsupported protocol: {config.protocol}")
 
+    validate_client_http_proxy(config)
+
     if not (1 <= config.listen_port <= 65535):
         raise ValueError(f"Invalid listen_port: {config.listen_port}")
 
@@ -63,6 +65,30 @@ def validate_config(config: AddonConfig) -> None:
             raise ValueError(
                 f"VPN subnet {vpn_network} overlaps with local_networks entry {local_network}"
             )
+
+
+def validate_client_http_proxy(config: AddonConfig) -> None:
+    if not config.experimental_client_http_proxy:
+        return
+    if config.protocol != "tcp":
+        raise ValueError("experimental_client_http_proxy requires protocol: tcp")
+
+    # Only a bare IPv4 address or DNS name: no URLs, credentials or config tokens.
+    host = config.client_http_proxy_host
+    if not isinstance(host, str) or not 1 <= len(host) <= 253:
+        raise ValueError("client_http_proxy_host must be an IPv4 address or DNS name")
+    labels = host.removesuffix(".").split(".")
+    if not all(re.fullmatch(r"[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?", label) for label in labels):
+        raise ValueError("client_http_proxy_host must be an IPv4 address or DNS name")
+    if all(label.isdigit() for label in labels):
+        try:
+            ipaddress.IPv4Address(host)
+        except ValueError:
+            raise ValueError("client_http_proxy_host must be a valid IPv4 address") from None
+
+    port = config.client_http_proxy_port
+    if type(port) is not int or not 1 <= port <= 65535:
+        raise ValueError("client_http_proxy_port must be an integer from 1 to 65535")
 
 
 def validate_client_name(name: str) -> None:

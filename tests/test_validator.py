@@ -13,6 +13,47 @@ class ValidatorTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             validate_client_name("bad name")
 
+    def test_client_http_proxy_accepts_dns_names_and_ipv4(self):
+        for host in ["proxy.example.com", "proxy", "proxy.example.com.", "192.0.2.10"]:
+            for port in [1, 3128, 65535]:
+                with self.subTest(host=host, port=port):
+                    validate_config(AddonConfig(
+                        protocol="tcp", experimental_client_http_proxy=True,
+                        client_http_proxy_host=host, client_http_proxy_port=port,
+                    ))
+
+    def test_client_http_proxy_requires_tcp(self):
+        with self.assertRaisesRegex(ValueError, "requires protocol: tcp"):
+            validate_config(AddonConfig(
+                experimental_client_http_proxy=True, client_http_proxy_host="proxy.example.com",
+            ))
+
+    def test_client_http_proxy_rejects_invalid_hosts(self):
+        for host in ["", " ", "proxy host", "proxy\nverb 11", "proxy\rverb 11",
+                     "proxy\t8080", "https://proxy", "user:password@proxy", "proxy:8080",
+                     "proxy/path", "proxy#comment", '"proxy"', "-proxy", "proxy-",
+                     "proxy..example", "a" * 64, "a." * 127, "999.1.1.1", "::1", None]:
+            with self.subTest(host=host):
+                with self.assertRaisesRegex(ValueError, "client_http_proxy_host"):
+                    validate_config(AddonConfig(
+                        protocol="tcp", experimental_client_http_proxy=True,
+                        client_http_proxy_host=host,
+                    ))
+
+    def test_client_http_proxy_rejects_invalid_ports(self):
+        for port in [0, -1, 65536, True, 8080.5, "8080", None]:
+            with self.subTest(port=port):
+                with self.assertRaisesRegex(ValueError, "client_http_proxy_port"):
+                    validate_config(AddonConfig(
+                        protocol="tcp", experimental_client_http_proxy=True,
+                        client_http_proxy_host="proxy.example.com", client_http_proxy_port=port,
+                    ))
+
+    def test_disabled_client_http_proxy_ignores_unused_settings(self):
+        validate_config(AddonConfig(
+            client_http_proxy_host="not a hostname", client_http_proxy_port=0,
+        ))
+
     def test_reject_overlapping_vpn_and_local_networks(self):
         config = AddonConfig(
             server_host="192.168.1.6",
