@@ -15,6 +15,10 @@ from .status import collect_status
 
 
 MAX_BODY_BYTES = 64 * 1024
+# Home Assistant's fixed Supervisor ingress peer and host-network bridge.
+# https://contributors.home-assistant.io/apps/guides/ingress/
+INGRESS_PEER = "172.30.32.2"
+INGRESS_BRIDGE = ipaddress.IPv4Interface("172.30.32.1/23")
 
 
 @dataclass(slots=True)
@@ -51,54 +55,34 @@ class PanelServer:
 
 
 def panel_bind_addresses(config: AddonConfig) -> list[str]:
-    """Bind every internal address so Home Assistant ingress can reach the panel.
-
-    The local network is deliberately excluded: this port issues certificates and serves client
-    private keys, so it must not be reachable from the LAN.
-    """
-    interfaces = network._host_ipv4_addresses()
-    if not interfaces:
-        return _lan_exposed_fallback()
-
+    """Bind only the known Supervisor bridge; disable the panel if discovery is ambiguous."""
     try:
-        lan_interface = network._default_interface()
-    except RuntimeError:
-        lan_interface = ""
-
-    lan_networks = _configured_networks(config)
-    candidates: list[str] = []
-    for name, address in interfaces:
-        ip = str(address.ip)
-        if name == "lo" or name == lan_interface:
-            continue
-        if ip.startswith("169.254."):
-            continue
-        if any(address.ip in subnet for subnet in lan_networks):
-            continue
-        candidates.append(ip)
-
-    if not candidates:
-        return _lan_exposed_fallback()
-    return list(dict.fromkeys([*candidates, "127.0.0.1"]))
-
-
-def _configured_networks(config: AddonConfig) -> list[ipaddress.IPv4Network]:
-    networks: list[ipaddress.IPv4Network] = []
-    for item in config.local_networks:
-        try:
-            networks.append(ipaddress.IPv4Network(item, strict=False))
-        except ValueError:
-            continue
-    return networks
-
-
-def _lan_exposed_fallback() -> list[str]:
-    return ["0.0.0.0"]
+        interfaces = network._host_ipv4_addresses()
+    except OSError:
+        return []
+    ingress_interfaces = [
+        (name, address)
+        for name, address in interfaces
+        if name == "hassio" or address.network.overlaps(INGRESS_BRIDGE.network)
+    ]
+    if ingress_interfaces != [("hassio", INGRESS_BRIDGE)]:
+        return []
+    return [str(INGRESS_BRIDGE.ip)]
 
 
 def _build_handler(config: AddonConfig, actions: PanelActions) -> type[BaseHTTPRequestHandler]:
     class PanelHandler(BaseHTTPRequestHandler):
         server_version = "openvpn-addon-panel"
+
+        def parse_request(self) -> bool:
+            if not super().parse_request():
+                return False
+            # Trust the TCP peer only, never caller-supplied forwarding or ingress headers.
+            if self.client_address[0] != INGRESS_PEER:
+                self.close_connection = True
+                self._send_json({"status": "error", "message": "ingress only"}, HTTPStatus.FORBIDDEN)
+                return False
+            return True
 
         def do_GET(self) -> None:  # noqa: N802 - http.server API
             path = urllib.parse.urlparse(self.path).path.rstrip("/") or "/"

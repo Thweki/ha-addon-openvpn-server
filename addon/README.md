@@ -89,6 +89,6 @@ flowchart LR
 - `nat_enabled` must stay on for clients to reach LAN devices; turning it off leaves clients able to reach only the VPN server itself.
 - `lan_networks`, `dns` and `extra_routes` accept comma-separated values.
 - Prefer UDP. Use TCP only when your network blocks UDP.
-- The panel listens on the Supervisor bridge and is reached through Home Assistant ingress; do not port-forward it.
+- The panel binds only to the Supervisor bridge (`hassio`, `172.30.32.1/23`) and accepts only the Supervisor ingress peer (`172.30.32.2`). Access it through Home Assistant ingress. If the bridge is missing or ambiguous, the panel stays disabled; it never falls back to LAN or wildcard listeners.
 
 See [DOCS.md](addon/DOCS.md) for troubleshooting and [addon/CHANGELOG.md](addon/CHANGELOG.md) for the change history.
