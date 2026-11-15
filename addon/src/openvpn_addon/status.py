@@ -105,27 +105,30 @@ def _load_fixed_ips(config: AddonConfig) -> dict[str, str]:
 
 
 def _parse_status(path: Path) -> dict[str, dict[str, str]]:
+    """Stream client rows without buffering the entire status file."""
     if not path.exists():
         return {}
     results: dict[str, dict[str, str]] = {}
     in_section = False
-    for line in path.read_text(encoding="utf-8", errors="replace").splitlines():
-        if line.startswith("Common Name,"):
-            in_section = True
-            continue
-        if in_section and line.startswith("ROUTING TABLE"):
-            break
-        if not in_section or not line:
-            continue
-        parts = line.split(",")
-        if len(parts) < 5:
-            continue
-        results[parts[0]] = {
-            "common_name": parts[0],
-            "real_address": parts[1],
-            "virtual_address": parts[2],
-            "bytes_received": parts[3],
-            "bytes_sent": parts[4],
-            "connected_since": parts[5] if len(parts) > 5 else "",
-        }
+    with path.open(encoding="utf-8", errors="replace") as stream:
+        for line in stream:
+            line = line.rstrip("\r\n")
+            if line.startswith("Common Name,"):
+                in_section = True
+                continue
+            if in_section and line.startswith("ROUTING TABLE"):
+                break
+            if not in_section or not line:
+                continue
+            parts = line.split(",")
+            if len(parts) < 5:
+                continue
+            results[parts[0]] = {
+                "common_name": parts[0],
+                "real_address": parts[1],
+                "virtual_address": parts[2],
+                "bytes_received": parts[3],
+                "bytes_sent": parts[4],
+                "connected_since": parts[5] if len(parts) > 5 else "",
+            }
     return results

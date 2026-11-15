@@ -1,11 +1,87 @@
+import io
 import json
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 import openvpn_addon.config as config_module
 from openvpn_addon.config import AddonConfig
-from openvpn_addon.status import collect_status, status_json
+from openvpn_addon.status import _parse_status, collect_status, status_json
+
+
+class StatusFileTests(unittest.TestCase):
+    def setUp(self):
+        tempdir = tempfile.TemporaryDirectory()
+        self.addCleanup(tempdir.cleanup)
+        self.path = Path(tempdir.name) / "status.log"
+
+    def test_missing_and_empty_files(self):
+        self.assertEqual({}, _parse_status(self.path))
+        self.path.touch()
+        self.assertEqual({}, _parse_status(self.path))
+
+    def test_line_endings_and_unterminated_last_line(self):
+        for newline in (b"\n", b"\r\n", b"\r"):
+            with self.subTest(newline=newline):
+                self.path.write_bytes(newline.join([
+                    b"OpenVPN CLIENT LIST",
+                    b"Common Name,Real Address,Virtual Address,Bytes Received,Bytes Sent,Connected Since",
+                    b"",
+                    b"incomplete,row",
+                    b"alice,203.0.113.5:51234,10.8.0.2,100,200,Wed Oct 14 07:00:00 2026",
+                    b"bob,203.0.113.6:51234,10.8.0.3,300,400",
+                ]))
+                self.assertEqual({
+                    "alice": {
+                        "common_name": "alice",
+                        "real_address": "203.0.113.5:51234",
+                        "virtual_address": "10.8.0.2",
+                        "bytes_received": "100",
+                        "bytes_sent": "200",
+                        "connected_since": "Wed Oct 14 07:00:00 2026",
+                    },
+                    "bob": {
+                        "common_name": "bob",
+                        "real_address": "203.0.113.6:51234",
+                        "virtual_address": "10.8.0.3",
+                        "bytes_received": "300",
+                        "bytes_sent": "400",
+                        "connected_since": "",
+                    },
+                }, _parse_status(self.path))
+
+    def test_invalid_utf8_is_replaced(self):
+        self.path.write_bytes(b"Common Name,\nalice,remote,10.8.0.2,100,200,invalid\xff\n")
+        self.assertEqual("invalid\ufffd", _parse_status(self.path)["alice"]["connected_since"])
+
+    def test_streams_only_through_client_section(self):
+        class StreamingOnlyFile(io.StringIO):
+            def read(self, *args, **kwargs):
+                raise AssertionError("status file must not be read in full")
+
+            def readlines(self, *args, **kwargs):
+                raise AssertionError("status lines must not be collected in full")
+
+            def __next__(self):
+                line = super().__next__()
+                if line.startswith("unused route"):
+                    raise AssertionError("routing entries must not be consumed")
+                return line
+
+        self.path.touch()
+        client_count = 10000
+        stream = StreamingOnlyFile(
+            "Common Name,\n"
+            + "".join(f"client{i},remote,10.8.0.2,100,200,since\n" for i in range(client_count))
+            + "ROUTING TABLE\n"
+            + "unused route\n" * client_count
+        )
+        with patch.object(Path, "open", return_value=stream):
+            sessions = _parse_status(self.path)
+        self.assertTrue(stream.closed)
+        self.assertEqual(client_count, len(sessions))
+        self.assertEqual("since", sessions["client9999"]["connected_since"])
 
 
 class StatusTests(unittest.TestCase):
