@@ -14,6 +14,7 @@ remote-cert-tls client
 persist-key
 persist-tun
 keepalive ${keepalive}
+${packet_sizing}
 data-ciphers ${data_ciphers}
 data-ciphers-fallback ${cipher}
 auth ${auth}

@@ -49,6 +49,9 @@ options:
   extra_routes: ""
   inactive_timeout: 0
   keepalive: "10 120"
+  experimental_packet_sizing: false
+  fragment_size: 0
+  mssfix_size: 0
   log_level: "info"
   status_interval: 30
   client_name: "homeassistant"
@@ -77,6 +80,9 @@ schema:
   extra_routes: str?
   inactive_timeout: int
   keepalive: str
+  experimental_packet_sizing: bool
+  fragment_size: int(0,1500)
+  mssfix_size: int(0,1500)
   log_level: str
   status_interval: int
   client_name: str

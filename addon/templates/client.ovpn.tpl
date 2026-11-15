@@ -6,6 +6,7 @@ resolv-retry infinite
 nobind
 persist-key
 persist-tun
+${packet_sizing}
 remote-cert-tls server
 data-ciphers ${data_ciphers}
 tls-version-min ${tls_version_min}

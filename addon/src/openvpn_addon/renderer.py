@@ -30,6 +30,7 @@ def render_server_config(config: AddonConfig) -> str:
         client_config_dir_line=_client_config_dir_line(config),
         status_path=config.status_path,
         keepalive=config.keepalive,
+        packet_sizing=_packet_sizing(config),
         data_ciphers=_data_ciphers(config),
         cipher=config.cipher,
         auth=config.auth,
@@ -54,6 +55,7 @@ def render_client_config(config: AddonConfig, client_name: str) -> str:
         remote_port=remote_port,
         protocol=config.protocol,
         data_ciphers=_data_ciphers(config),
+        packet_sizing=_packet_sizing(config),
         auth=config.auth,
         tls_version_min=TLS_VERSION_MIN,
         tls_crypt_block=_tls_crypt_block(config),
@@ -61,6 +63,22 @@ def render_client_config(config: AddonConfig, client_name: str) -> str:
         cert=_read_cert_body(config.pki_dir / "issued" / f"{client_name}.crt"),
         key=_read_file(config.pki_dir / "private" / f"{client_name}.key"),
     )
+
+
+def _packet_sizing(config: AddonConfig) -> str:
+    if not config.experimental_packet_sizing or not (config.fragment_size or config.mssfix_size):
+        return ""
+    # MSS rewriting needs the userspace data path. Both peers must agree on
+    # fragmentation, so use the same directives in the server and client files.
+    lines = ["disable-dco"]
+    if config.fragment_size:
+        lines.append(f"fragment {config.fragment_size} mtu")
+    if config.mssfix_size:
+        lines.append(f"mssfix {config.mssfix_size} mtu")
+    elif config.fragment_size:
+        # Bare mssfix inherits fragment's size, including the outer IP/UDP headers.
+        lines.append("mssfix")
+    return "\n".join(lines)
 
 
 def _resolve_remote(config: AddonConfig) -> tuple[str, int]:
