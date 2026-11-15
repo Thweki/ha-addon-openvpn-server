@@ -6,6 +6,7 @@ import json
 import signal
 import subprocess
 import sys
+import tempfile
 import threading
 import time
 from dataclasses import dataclass
@@ -471,8 +472,7 @@ def export_client(config: AddonConfig, name: str) -> ExportResult:
         raise ValueError("Set public_endpoint or a concrete server_host before exporting a client profile")
     output = render_client_config(config, name)
     path = config.exports_dir / f"{name}.ovpn"
-    path.write_text(output, encoding="utf-8")
-    path.chmod(0o600)
+    _write_private_profile(path, output)
     publish_path = publish_export(config, path)
     return ExportResult(path, publish_path)
 
@@ -481,10 +481,23 @@ def publish_export(config: AddonConfig, source_path: Path) -> Path | None:
     if not config.publish_profiles_to_share:
         return None
     target_path = config.share_exports_dir / source_path.name
-    target_path.write_text(source_path.read_text(encoding="utf-8"), encoding="utf-8")
-    # The profile embeds the client private key; keep it away from other add-ons where possible.
-    target_path.chmod(0o600)
+    _write_private_profile(target_path, source_path.read_text(encoding="utf-8"))
     return target_path
+
+
+def _write_private_profile(path: Path, content: str) -> None:
+    # Create with mode 0600 before writing any private-key content. A same-directory
+    # replacement also avoids following destination links or exposing partial profiles.
+    temporary = tempfile.NamedTemporaryFile(
+        mode="w", encoding="utf-8", dir=path.parent, prefix=f".{path.name}.", delete=False,
+    )
+    temporary_path = Path(temporary.name)
+    try:
+        with temporary:
+            temporary.write(content)
+        temporary_path.replace(path)
+    finally:
+        temporary_path.unlink(missing_ok=True)
 
 
 def remove_profile(config: AddonConfig, client_name: str) -> None:
