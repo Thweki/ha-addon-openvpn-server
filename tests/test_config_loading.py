@@ -48,6 +48,30 @@ class ConfigLoadingTests(unittest.TestCase):
         config = self.load({"nat_enabled": True, "legacy_knob": "x", "another": 1})
         self.assertEqual(["another", "legacy_knob"], config.unknown_options)
 
+    def test_client_retry_defaults_off(self):
+        config = self.load({})
+        self.assertIs(False, config.experimental_client_retry)
+        self.assertEqual("none", config.client_auth_retry)
+        self.assertEqual(1, config.client_connect_retry_seconds)
+        self.assertEqual(300, config.client_connect_retry_max_seconds)
+        self.assertEqual(0, config.client_connect_retry_max_attempts)
+
+    def test_loads_client_retry_options(self):
+        config = self.load({
+            "experimental_client_retry": "true",
+            "client_auth_retry": "nointeract",
+            "client_connect_retry_seconds": "5",
+            "client_connect_retry_max_seconds": "60",
+            "client_connect_retry_max_attempts": "12",
+        })
+        self.assertIs(True, config.experimental_client_retry)
+        self.assertEqual("nointeract", config.client_auth_retry)
+        self.assertEqual(5, config.client_connect_retry_seconds)
+        self.assertEqual(60, config.client_connect_retry_max_seconds)
+        self.assertEqual(12, config.client_connect_retry_max_attempts)
+        self.assertEqual([], config.unknown_options)
+        self.assertIs(False, self.load({"experimental_client_retry": "false"}).experimental_client_retry)
+
     def test_scalar_types_are_coerced(self):
         config = self.load(
             {

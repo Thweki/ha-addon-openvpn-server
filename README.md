@@ -133,6 +133,9 @@ openvpn-addon client list
 
 ## Client Profiles
 
+An optional [experimental client retry policy](addon/DOCS.md#experimental-client-retry-policy)
+controls reconnect delays and attempt limits in exported profiles. It defaults off.
+
 Client profiles embed the client private key and are written with mode `0600`. Download them from the panel.
 
 Setting `publish_profiles_to_share: true` also copies them to `/share/openvpn_server/clients/`. That path is readable by other add-ons, so leave it off unless you need it.

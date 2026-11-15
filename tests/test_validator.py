@@ -13,6 +13,41 @@ class ValidatorTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             validate_client_name("bad name")
 
+    def test_client_retry_accepts_modes_and_boundaries(self):
+        for mode in ("none", "nointeract", "interact"):
+            for delay, cap, attempts in ((1, 1, 0), (5, 60, 12), (86400, 86400, 65535)):
+                with self.subTest(mode=mode, delay=delay, cap=cap, attempts=attempts):
+                    validate_config(AddonConfig(
+                        experimental_client_retry=True,
+                        client_auth_retry=mode,
+                        client_connect_retry_seconds=delay,
+                        client_connect_retry_max_seconds=cap,
+                        client_connect_retry_max_attempts=attempts,
+                    ))
+
+    def test_client_retry_rejects_invalid_values_even_when_disabled(self):
+        invalid = {
+            "client_auth_retry": ("", "retry", "none\nscript-security 3", None, []),
+            "client_connect_retry_seconds": (0, -1, 86401),
+            "client_connect_retry_max_seconds": (0, -1, 86401),
+            "client_connect_retry_max_attempts": (-1, 65536),
+        }
+        for enabled in (False, True):
+            for field, values in invalid.items():
+                for value in values:
+                    with self.subTest(enabled=enabled, field=field, value=value):
+                        config = AddonConfig(experimental_client_retry=enabled)
+                        setattr(config, field, value)
+                        with self.assertRaisesRegex(ValueError, field):
+                            validate_config(config)
+
+    def test_client_retry_rejects_cap_below_initial_delay(self):
+        with self.assertRaisesRegex(ValueError, "client_connect_retry_max_seconds"):
+            validate_config(AddonConfig(
+                client_connect_retry_seconds=60,
+                client_connect_retry_max_seconds=5,
+            ))
+
     def test_reject_overlapping_vpn_and_local_networks(self):
         config = AddonConfig(
             server_host="192.168.1.6",
