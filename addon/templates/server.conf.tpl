@@ -19,6 +19,7 @@ data-ciphers-fallback ${cipher}
 auth ${auth}
 dh none
 ${tls_crypt_line}
+${tls_auth_line}
 ${duplicate_cn}
 ${client_to_client}
 ${inactive_timeout}

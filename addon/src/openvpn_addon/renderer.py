@@ -27,6 +27,7 @@ def render_server_config(config: AddonConfig) -> str:
         ca_cert=config.pki_dir / "ca.crt",
         crl=config.crl_path,
         tls_crypt_line=_tls_crypt_line(config),
+        tls_auth_line=_tls_auth_line(config),
         client_config_dir_line=_client_config_dir_line(config),
         status_path=config.status_path,
         keepalive=config.keepalive,
@@ -57,6 +58,7 @@ def render_client_config(config: AddonConfig, client_name: str) -> str:
         auth=config.auth,
         tls_version_min=TLS_VERSION_MIN,
         tls_crypt_block=_tls_crypt_block(config),
+        tls_auth_block=_tls_auth_block(config),
         ca=_read_file(config.pki_dir / "ca.crt"),
         cert=_read_cert_body(config.pki_dir / "issued" / f"{client_name}.crt"),
         key=_read_file(config.pki_dir / "private" / f"{client_name}.key"),
@@ -106,6 +108,17 @@ def _format_push_routes(networks: list[ipaddress._BaseNetwork]) -> str:
 
 def _tls_crypt_line(config: AddonConfig) -> str:
     return f"tls-crypt {config.tls_crypt_path}" if config.tls_crypt else ""
+
+
+def _tls_auth_line(config: AddonConfig) -> str:
+    # Both modes use the existing persistent OpenVPN static key; server direction is 0.
+    return f"tls-auth {config.tls_crypt_path} 0" if config.experimental_tls_auth else ""
+
+
+def _tls_auth_block(config: AddonConfig) -> str:
+    if not config.experimental_tls_auth:
+        return ""
+    return "key-direction 1\n<tls-auth>\n" + _read_file(config.tls_crypt_path) + "\n</tls-auth>"
 
 
 def _client_config_dir_line(config: AddonConfig) -> str:

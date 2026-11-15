@@ -31,6 +31,7 @@ class AddonConfig:
     cipher: str = "AES-256-GCM"
     auth: str = "SHA256"
     tls_crypt: bool = True
+    experimental_tls_auth: bool = False
     client_to_client: bool = False
     duplicate_cn: bool = False
     fixed_client_ips: bool = True

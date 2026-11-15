@@ -58,6 +58,10 @@
       "name": "启用 tls-crypt",
       "description": "加密并认证控制通道，同时让端口扫描器看不出这是 VPN。建议保持开启。"
     },
+    "experimental_tls_auth": {
+      "name": "实验性：启用 tls-auth",
+      "description": "默认关闭。仅用于需要 tls-auth 的客户端：关闭 tls_crypt，启用此选项并重启插件，然后重新导出并导入所有客户端配置。此模式认证控制数据包，但不提供 tls-crypt 的额外加密。"
+    },
     "client_to_client": {
       "name": "允许客户端之间互通",
       "description": "家庭场景通常保持关闭。"
