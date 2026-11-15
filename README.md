@@ -137,6 +137,24 @@ Client profiles embed the client private key and are written with mode `0600`. D
 
 Setting `publish_profiles_to_share: true` also copies them to `/share/openvpn_server/clients/`. That path is readable by other add-ons, so leave it off unless you need it.
 
+To export several existing clients at once, for example after changing `public_endpoint` or
+`public_port`, create a ZIP with freshly rendered profiles:
+
+```bash
+openvpn-addon client bundle iphone laptop --output /data/openvpn/device-profiles.zip
+```
+
+Each selected client gets a `<name>.ovpn` entry using the current configuration and existing
+credentials. Unknown, revoked, reserved, and duplicate names are rejected, as are clients
+marked expired in the PKI index.
+The command does not issue or revoke certificates, restart OpenVPN, update individual exports,
+or automatically publish to `/share`. The destination directory must exist; an existing file
+or symlink is never overwritten. Missing profile material aborts the entire bundle.
+
+The ZIP is created with mode `0600` and contains private keys; it is **not encrypted**.
+Store and transfer it securely, distribute each profile only to its intended device, and remove
+the archive when finished. It is a profile export, not a backup of the server's PKI.
+
 ## Request Files (optional, scriptable)
 
 Write a file into `/share/openvpn_server/requests/` and it is applied while the add-on runs — no restart, no dropped sessions:

@@ -16,6 +16,7 @@ from .config import DATA_ROOT, AddonConfig, load_config
 from .health import collect_health, worst_status
 from .network import apply_network, ip_forward_enabled, remove_network
 from .pki import PkiManager
+from .profiles import bundle_profiles
 from .renderer import effective_push_networks, render_client_config, render_server_config
 from .requests import archive_request, reject_request, scan_client_requests, write_result
 from .status import collect_status, status_json
@@ -61,6 +62,11 @@ def build_parser() -> argparse.ArgumentParser:
     export = client_sub.add_parser("export", help="Re-render a client .ovpn profile")
     export.add_argument("name")
     export.set_defaults(func=cmd_client_export)
+
+    bundle = client_sub.add_parser("bundle", help="Export selected client profiles into a new private ZIP")
+    bundle.add_argument("names", nargs="+")
+    bundle.add_argument("--output", required=True, type=Path, help="New ZIP path (must not already exist)")
+    bundle.set_defaults(func=cmd_client_bundle)
 
     list_parser = client_sub.add_parser("list", help="List issued client certificates")
     list_parser.set_defaults(func=cmd_client_list)
@@ -180,6 +186,13 @@ def cmd_client_export(args: argparse.Namespace) -> int:
     result = export_client(config, args.name)
     print(f"Re-exported client profile: {args.name}", flush=True)
     print(f"Internal export path: {result.export_path}", flush=True)
+    return 0
+
+
+def cmd_client_bundle(args: argparse.Namespace) -> int:
+    config = load_and_validate()
+    bundle_profiles(config, args.names, args.output)
+    print(f"Bundled {len(args.names)} client profile(s): {args.output}", flush=True)
     return 0
 
 
