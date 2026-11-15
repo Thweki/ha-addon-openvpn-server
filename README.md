@@ -116,6 +116,11 @@ flowchart LR
 
 ## Client Certificates
 
+To inspect observed VPN addresses and saved fixed assignments without reading keys,
+run `openvpn-addon client leases` inside the add-on container. It returns JSON and
+preserves separate sessions sharing a certificate. See [address lease output and
+snapshot freshness](addon/DOCS.md#client-address-leases).
+
 Two modes, selected by `duplicate_cn`:
 
 | `duplicate_cn` | Behaviour |
