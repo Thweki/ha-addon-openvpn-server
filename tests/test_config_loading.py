@@ -48,6 +48,16 @@ class ConfigLoadingTests(unittest.TestCase):
         config = self.load({"nat_enabled": True, "legacy_knob": "x", "another": 1})
         self.assertEqual(["another", "legacy_knob"], config.unknown_options)
 
+    def test_tls_version_min_defaults_to_existing_policy(self):
+        self.assertEqual("1.2", self.load({}).tls_version_min)
+
+    def test_loads_tls_version_min(self):
+        for version in ("1.2", "1.3"):
+            with self.subTest(version=version):
+                config = self.load({"tls_version_min": version})
+                self.assertEqual(version, config.tls_version_min)
+                self.assertEqual([], config.unknown_options)
+
     def test_scalar_types_are_coerced(self):
         config = self.load(
             {

@@ -13,6 +13,20 @@ class ValidatorTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             validate_client_name("bad name")
 
+    def test_accepts_supported_tls_minimum_versions(self):
+        for version in ("1.2", "1.3"):
+            with self.subTest(version=version):
+                validate_config(AddonConfig(tls_version_min=version))
+
+    def test_rejects_invalid_tls_minimum_versions(self):
+        for version in (
+            "1.0", "1.1", "1.4", "", "default", "1.3 or-highest",
+            "1.3\nverb 9", " 1.3", 1.3, True, None, [], {},
+        ):
+            with self.subTest(version=version):
+                with self.assertRaisesRegex(ValueError, "tls_version_min"):
+                    validate_config(AddonConfig(tls_version_min=version))
+
     def test_reject_overlapping_vpn_and_local_networks(self):
         config = AddonConfig(
             server_host="192.168.1.6",

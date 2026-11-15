@@ -5,6 +5,32 @@ Full repository documentation:
 - [README.md](https://github.com/Thweki/ha-addon-openvpn-server/blob/main/README.md)
 - [README.zh-CN.md](https://github.com/Thweki/ha-addon-openvpn-server/blob/main/README.zh-CN.md)
 
+## Minimum TLS version
+
+The `tls_version_min` option controls the minimum TLS version accepted for the
+OpenVPN control channel, in both the server configuration and exported client
+profiles. It defaults to `"1.2"`, preserving the existing policy (TLS 1.2 or newer).
+To require TLS 1.3, set this in the add-on configuration:
+
+```yaml
+tls_version_min: "1.3"
+```
+
+Keep the value quoted when editing YAML. Only `"1.2"` and `"1.3"` are accepted;
+older versions and automatic fallback are not supported. This uses OpenVPN's
+standard [`tls-version-min` directive](https://openvpn.net/community-docs/community-articles/openvpn-2-6-manual/).
+
+Save and restart the add-on, then download updated profiles from the panel and
+import them on your devices. Previously downloaded profiles and non-default
+profiles already in `/share` are not automatically updated; re-export those if
+you use them. No certificates need to be reissued.
+
+Choose `"1.3"` only when every client's OpenVPN and TLS library support TLS 1.3.
+The server will reject TLS 1.2-only clients even if they still use an old profile.
+If needed, restore `"1.2"`, restart, and download/import fresh profiles again.
+This setting does not change data-channel ciphers, certificate verification, or
+`tls_crypt`.
+
 ## Troubleshooting
 
 Start with **Open Web UI -> Health**. Every check below is reported there together with the reason.

@@ -40,6 +40,7 @@ options:
   cipher: "AES-256-GCM"
   auth: "SHA256"
   tls_crypt: true
+  tls_version_min: "1.2"
   client_to_client: false
   duplicate_cn: false
   fixed_client_ips: true
@@ -68,6 +69,7 @@ schema:
   cipher: str
   auth: str
   tls_crypt: bool
+  tls_version_min: list(1.2|1.3)
   client_to_client: bool
   duplicate_cn: bool
   fixed_client_ips: bool
