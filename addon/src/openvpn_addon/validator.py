@@ -45,6 +45,14 @@ def validate_config(config: AddonConfig) -> None:
     if config.inactive_timeout < 0:
         raise ValueError("inactive_timeout must be >= 0")
 
+    for option in ("fragment_size", "mssfix_size"):
+        size = getattr(config, option)
+        if type(size) is not int or (size != 0 and not 576 <= size <= 1500):
+            raise ValueError(f"{option} must be 0 or an integer from 576 to 1500")
+    if config.experimental_packet_sizing and (config.fragment_size or config.mssfix_size):
+        if config.protocol != "udp":
+            raise ValueError("experimental_packet_sizing requires protocol: udp when a size is set")
+
     if config.status_interval <= 0:
         raise ValueError("status_interval must be > 0")
 
@@ -103,6 +111,17 @@ def config_warnings(config: AddonConfig) -> list[str]:
         warnings.append(
             "redirect_gateway is enabled; all client internet traffic will be sent through the VPN."
         )
+
+    if config.experimental_packet_sizing and (config.fragment_size or config.mssfix_size):
+        warnings.append(
+            "Experimental packet sizing is active; DCO is disabled. Re-export and re-import all "
+            "client profiles after changing these options; use OpenVPN 2.6+ clients."
+        )
+        if config.fragment_size:
+            warnings.append(
+                "fragment_size is enabled; all clients must support fragmentation. "
+                "OpenVPN Connect does not support fragment and cannot connect in this mode."
+            )
 
     if config.duplicate_cn:
         warnings.append(

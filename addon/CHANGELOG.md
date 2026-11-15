@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased
+
+- Experimental UDP packet sizing, default off: optional fragment and MSS sizes
+  are validated and applied to both the server and exported client profiles.
+  Active sizing requires OpenVPN 2.6+ clients and disables DCO; fragmentation is
+  incompatible with OpenVPN Connect. See the add-on docs before enabling.
+
 ## 0.2.2
 
 ### Changed

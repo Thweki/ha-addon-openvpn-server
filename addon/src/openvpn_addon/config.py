@@ -38,6 +38,9 @@ class AddonConfig:
     crl_valid_days: int = 3650
     inactive_timeout: int = 0
     keepalive: str = "10 120"
+    experimental_packet_sizing: bool = False
+    fragment_size: int = 0
+    mssfix_size: int = 0
     log_level: str = "info"
     status_interval: int = 30
     client_name: str = "homeassistant"
@@ -179,6 +182,8 @@ def _coerce_scalars(payload: dict[str, object]) -> dict[str, object]:
         if annotation == "bool":
             result[item.name] = _coerce_bool(value)
         elif annotation == "int":
+            if item.name in {"fragment_size", "mssfix_size"} and isinstance(value, (bool, float)):
+                raise ValueError(f"{item.name} must be an integer")
             result[item.name] = _coerce_int(value)
         else:
             result[item.name] = value

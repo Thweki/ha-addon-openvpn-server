@@ -94,6 +94,18 @@
       "name": "Keepalive ping/restart",
       "description": "Two values, for example '10 120'."
     },
+    "experimental_packet_sizing": {
+      "name": "Experimental UDP packet sizing",
+      "description": "Off by default. Apply fragment/MSS sizes to the server and exported profiles. Requires UDP and OpenVPN 2.6+ clients; disables DCO when a size is set. Restart and re-import every client profile after changes."
+    },
+    "fragment_size": {
+      "name": "Fragment packet size (bytes)",
+      "description": "0 disables fragmentation; otherwise 576–1500 including outer IP/UDP headers. Requires experimental packet sizing. All clients must support fragment; OpenVPN Connect cannot connect in this mode."
+    },
+    "mssfix_size": {
+      "name": "MSS packet size (bytes)",
+      "description": "0 uses OpenVPN defaults (or the fragment size); otherwise 576–1500 including outer IP/UDP headers. Limits TCP packet sizes inside the UDP tunnel. Requires experimental packet sizing."
+    },
     "log_level": {
       "name": "Log level",
       "description": "Higher levels log more detail into the add-on log."

@@ -94,6 +94,18 @@
       "name": "Keepalive 参数",
       "description": "两个值，例如 '10 120'。"
     },
+    "experimental_packet_sizing": {
+      "name": "实验性 UDP 数据包大小设置",
+      "description": "默认关闭。将分片和 MSS 大小应用到服务端和导出的客户端配置。需要 UDP 和 OpenVPN 2.6+ 客户端；设置大小后禁用 DCO。修改后需重启并重新导入所有客户端配置。"
+    },
+    "fragment_size": {
+      "name": "分片数据包大小（字节）",
+      "description": "0 表示禁用分片；否则为 576–1500，包含外层 IP/UDP 头。需要开启实验性数据包大小设置。所有客户端必须支持 fragment；OpenVPN Connect 无法在此模式下连接。"
+    },
+    "mssfix_size": {
+      "name": "MSS 数据包大小（字节）",
+      "description": "0 使用 OpenVPN 默认值（或分片大小）；否则为 576–1500，包含外层 IP/UDP 头。限制 UDP 隧道内 TCP 数据包的大小。需要开启实验性数据包大小设置。"
+    },
     "log_level": {
       "name": "日志等级",
       "description": "等级越高，插件日志越详细。"
