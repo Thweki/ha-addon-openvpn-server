@@ -15,6 +15,7 @@ from typing import Any, Callable
 from .config import DATA_ROOT, AddonConfig, load_config
 from .health import collect_health, worst_status
 from .network import apply_network, ip_forward_enabled, remove_network
+from .notifications import start_notifications
 from .pki import PkiManager
 from .renderer import effective_push_networks, render_client_config, render_server_config
 from .requests import archive_request, reject_request, scan_client_requests, write_result
@@ -120,6 +121,7 @@ def cmd_run(_: argparse.Namespace) -> int:
 
     panel = start_panel(config, pki, supervisor, stop_event)
     watcher = RequestWatcher(config, stop_event)
+    notifications = start_notifications(config)
 
     def handle_signal(signum: int, _frame: Any) -> None:
         print(f"Received signal {signum}; shutting down.", flush=True)
@@ -136,6 +138,8 @@ def cmd_run(_: argparse.Namespace) -> int:
         for server in panel:
             server.stop()
         supervisor.stop()
+        if notifications is not None:
+            notifications.stop()
         remove_network(config)
     return 0
 

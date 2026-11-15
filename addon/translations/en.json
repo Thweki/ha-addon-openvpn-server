@@ -2,6 +2,14 @@
   "name": "OpenVPN Server",
   "description": "OpenVPN server add-on for Home Assistant OS",
   "configuration": {
+    "experimental_client_notifications": {
+      "name": "Experimental client connection notifications",
+      "description": "Off by default. Send best-effort connect/disconnect webhooks without blocking VPN clients. Restart after changing."
+    },
+    "client_notification_url": {
+      "name": "Client notification webhook URL",
+      "description": "HTTP(S) receiver for JSON POSTs when experimental notifications are enabled. Treat secret webhook paths as credentials."
+    },
     "public_endpoint": {
       "name": "Public address or domain",
       "description": "The address your devices connect to, for example vpn.example.com. Written into exported client profiles."

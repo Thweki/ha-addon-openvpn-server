@@ -2,6 +2,14 @@
   "name": "OpenVPN 服务端",
   "description": "运行于 Home Assistant OS 的 OpenVPN 服务端插件",
   "configuration": {
+    "experimental_client_notifications": {
+      "name": "实验性客户端连接通知",
+      "description": "默认关闭。尽力发送连接和断开连接 Webhook，不阻塞 VPN 客户端。修改后请重启。"
+    },
+    "client_notification_url": {
+      "name": "客户端通知 Webhook 地址",
+      "description": "启用实验性通知后，向此 HTTP(S) 地址发送 JSON POST。请将私密 Webhook 路径视为凭据保管。"
+    },
     "public_endpoint": {
       "name": "公网地址或域名",
       "description": "你的设备连接使用的地址，例如 vpn.example.com。会写入导出的客户端配置。"

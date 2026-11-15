@@ -53,6 +53,8 @@ options:
   status_interval: 30
   client_name: "homeassistant"
   client_expire_days: 825
+  experimental_client_notifications: false
+  client_notification_url: ""
 schema:
   public_endpoint: str?
   listen_port: port
@@ -81,3 +83,5 @@ schema:
   status_interval: int
   client_name: str
   client_expire_days: int
+  experimental_client_notifications: bool
+  client_notification_url: str?

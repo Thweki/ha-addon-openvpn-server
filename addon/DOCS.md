@@ -5,6 +5,60 @@ Full repository documentation:
 - [README.md](https://github.com/Thweki/ha-addon-openvpn-server/blob/main/README.md)
 - [README.zh-CN.md](https://github.com/Thweki/ha-addon-openvpn-server/blob/main/README.zh-CN.md)
 
+## Experimental client connection notifications
+
+Receive a JSON webhook when OpenVPN calls its client connect/disconnect hooks, for
+example to trigger a Home Assistant automation when a named device connects.
+This feature is **off by default** and independent of status-file polling.
+
+Set these add-on options, then restart the add-on:
+
+```yaml
+experimental_client_notifications: true
+client_notification_url: "https://your-receiver.example/api/webhook/your-webhook-id"
+```
+
+The receiver must accept HTTP `POST` with `Content-Type: application/json` and
+return a `2xx` status. For Home Assistant, use a webhook automation that accepts
+POST; its JSON body is available as `trigger.json`. Only send to a receiver you
+trust with client names and VPN addresses. HTTPS uses normal certificate
+verification; HTTP is also supported for trusted local receivers. URL userinfo
+(`user:password@host`) and fragments are rejected. Treat a secret webhook path or
+query as a credential in your add-on options. No additional authentication headers
+are sent. Redirects and environment proxies are not followed.
+
+Example payload (the same fields are sent for both events):
+
+```json
+{
+  "schema_version": 1,
+  "event": "client-connect",
+  "client_name": "laptop",
+  "vpn_ip": "10.8.0.2",
+  "occurred_at": "2026-11-15T12:00:00+00:00"
+}
+```
+
+`event` is `client-connect` or `client-disconnect`; `occurred_at` is the UTC hook
+time, and `vpn_ip` is null if OpenVPN does not supply it. Payloads contain only
+these five fields: no keys, certificates, profiles, public peer addresses, or
+environment dump. The destination URL is never put in `server.conf` or notification
+log messages.
+
+Delivery is **best effort**, with one attempt per event and no persistent history
+or retries. The synchronous hook only sends a nonblocking local datagram to a
+mode-`0600` Unix socket; a single background worker performs HTTP delivery with a
+three-second socket timeout. The bounded kernel queue drops new events when full.
+A failed receiver, missing worker, or full queue does not reject VPN clients.
+Shutdown/crashes can lose pending events, and disconnect detection depends on
+OpenVPN's keepalive behavior. A connect hook is not proof the client finished
+configuring its tunnel. Shared certificates can produce multiple events with the
+same client name; this is not a reliable presence database or audit log.
+
+To disable, set `experimental_client_notifications: false` and restart. This
+removes the hooks and starts no notification worker, even if a URL remains set.
+Hook semantics follow the [OpenVPN manual](https://openvpn.net/community-docs/community-articles/openvpn-2-6-manual/).
+
 ## Troubleshooting
 
 Start with **Open Web UI -> Health**. Every check below is reported there together with the reason.
