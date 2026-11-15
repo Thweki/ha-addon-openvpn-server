@@ -44,6 +44,7 @@ options:
   duplicate_cn: false
   fixed_client_ips: true
   publish_profiles_to_share: false
+  experimental_audit_log: false
   crl_valid_days: 3650
   server_host: "0.0.0.0"
   extra_routes: ""
@@ -72,6 +73,7 @@ schema:
   duplicate_cn: bool
   fixed_client_ips: bool
   publish_profiles_to_share: bool
+  experimental_audit_log: bool?
   crl_valid_days: int
   server_host: str
   extra_routes: str?

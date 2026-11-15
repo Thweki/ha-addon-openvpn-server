@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+- Add experimental, opt-in panel audit history for client connections, disconnections,
+  certificate revocations and panel profile downloads. Retain the last 1,000 events
+  privately across restarts; `experimental_audit_log` defaults to `false`.
+
 ## 0.2.2
 
 ### Changed

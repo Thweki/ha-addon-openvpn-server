@@ -10,6 +10,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from .config import AddonConfig
+from .audit import record_event
 from .validator import validate_client_name
 
 
@@ -100,6 +101,7 @@ class PkiManager:
         if status == STATUS_REVOKED:
             raise ValueError(f"Client certificate is already revoked: {client_name}")
         self._run("revoke", client_name, cwd=self.config.pki_dir.parent)
+        record_event(self.config, "client_revoke", client_name)
         self.refresh_crl()
 
     def client_status(self, client_name: str) -> str:

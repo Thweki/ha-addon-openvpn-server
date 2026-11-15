@@ -35,6 +35,7 @@ class AddonConfig:
     duplicate_cn: bool = False
     fixed_client_ips: bool = True
     publish_profiles_to_share: bool = False
+    experimental_audit_log: bool = False
     crl_valid_days: int = 3650
     inactive_timeout: int = 0
     keepalive: str = "10 120"
@@ -60,6 +61,10 @@ class AddonConfig:
     @property
     def logs_dir(self) -> Path:
         return DATA_ROOT / "logs"
+
+    @property
+    def audit_path(self) -> Path:
+        return DATA_ROOT / "audit" / "events.sqlite3"
 
     @property
     def clients_dir(self) -> Path:

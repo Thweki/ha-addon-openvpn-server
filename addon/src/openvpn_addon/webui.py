@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import ipaddress
 import json
+import sqlite3
 import threading
 import urllib.parse
 from dataclasses import dataclass
@@ -10,6 +11,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from typing import Any, Callable
 
 from . import network
+from .audit import read_events, record_event
 from .config import AddonConfig
 from .status import collect_status
 
@@ -108,6 +110,21 @@ def _build_handler(config: AddonConfig, actions: PanelActions) -> type[BaseHTTPR
             if path == "/api/status":
                 self._send_json(collect_status(config))
                 return
+            if path == "/api/audit":
+                try:
+                    query = urllib.parse.parse_qs(urllib.parse.urlparse(self.path).query, keep_blank_values=True)
+                    before_text = query.get("before", [None])[0]
+                    before = int(before_text) if before_text is not None else None
+                    if before is not None and not 0 < before <= 2**63 - 1:
+                        raise ValueError("invalid cursor")
+                except ValueError:
+                    self._send_json({"message": "before must be a positive event ID"}, HTTPStatus.BAD_REQUEST)
+                    return
+                try:
+                    self._send_json(read_events(config, before))
+                except (OSError, sqlite3.Error):
+                    self._send_json({"message": "Audit history unavailable"}, HTTPStatus.SERVICE_UNAVAILABLE)
+                return
             if path == "/api/diagnostics":
                 self._send_text(_diagnostics(config, actions))
                 return
@@ -119,6 +136,7 @@ def _build_handler(config: AddonConfig, actions: PanelActions) -> type[BaseHTTPR
                     self._send_json({"status": "error", "message": str(error)}, HTTPStatus.BAD_REQUEST)
                     return
                 self._send_text(body, filename=f"{profile}.ovpn")
+                record_event(config, "profile_download", profile)
                 return
             self._send_json({"status": "error", "message": "not found"}, HTTPStatus.NOT_FOUND)
 
@@ -287,6 +305,17 @@ code{background:rgba(127,127,127,.15);border-radius:4px;padding:1px 4px}
   </div>
 
   <div class="card" style="grid-column:1/-1">
+    <h2>Audit history (experimental)</h2>
+    <p class="muted" id="auditstate">loading…</p>
+    <table><thead><tr><th>Time (UTC)</th><th>Event</th><th>Client</th></tr></thead>
+    <tbody id="audit"></tbody></table>
+    <div class="row">
+      <button id="auditrefresh">Latest events</button>
+      <button id="auditolder" disabled>Older events</button>
+    </div>
+  </div>
+
+  <div class="card" style="grid-column:1/-1">
     <h2>Maintenance</h2>
     <div class="row">
       <button id="refreshcrl">Rebuild CRL</button>
@@ -319,6 +348,32 @@ async function api(path, options){
 function badge(status){
   const cls = status === "ok" ? "ok" : status === "warn" ? "warn" : "err";
   return `<span class="badge ${cls}">${status}</span>`;
+}
+let auditBefore = null;
+async function loadAudit(before = null){
+  try {
+    const history = await api("api/audit" + (before === null ? "" : `?before=${before}`));
+    $("audit").replaceChildren();
+    for (const event of history.events){
+      const row = document.createElement("tr");
+      for (const value of [event.timestamp, event.event.replaceAll("_", " "), event.client]){
+        const cell = document.createElement("td");
+        cell.textContent = value;
+        row.appendChild(cell);
+      }
+      $("audit").appendChild(row);
+    }
+    auditBefore = history.next_before;
+    $("auditolder").disabled = auditBefore === null;
+    $("auditstate").textContent = !history.enabled
+      ? "Disabled. Enable experimental_audit_log in add-on options and restart to record events."
+      : history.events.length
+        ? "Newest first · last 1,000 events retained · use Latest events to refresh."
+        : "No recorded events yet.";
+  } catch (error) {
+    $("auditstate").textContent = "Audit history unavailable. Try Latest events again.";
+    $("auditolder").disabled = true;
+  }
 }
 async function load(){
   const status = await api("api/status");
@@ -368,13 +423,18 @@ document.addEventListener("click", async (event) => {
     } else if (button.id === "diag"){
       window.location = "api/diagnostics";
     } else if (button.id === "reload"){
-      load();
+      load(); loadAudit();
+    } else if (button.id === "auditrefresh"){
+      loadAudit();
+    } else if (button.id === "auditolder" && auditBefore !== null){
+      loadAudit(auditBefore);
     }
   } catch (error) {
     toast(String(error.message || error), true);
   }
 });
 load().catch((error) => toast(String(error.message || error), true));
+loadAudit();
 </script>
 </body>
 </html>

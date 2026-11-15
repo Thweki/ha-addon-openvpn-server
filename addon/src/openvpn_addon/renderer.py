@@ -43,6 +43,13 @@ def render_server_config(config: AddonConfig) -> str:
         status_interval=config.status_interval,
         verb=_verb_level(config.log_level),
         explicit_exit_notify=_explicit_exit_notify(config),
+        audit_hooks=(
+            'script-security 2\n'
+            'setenv PYTHONPATH /opt/openvpn_server/src\n'
+            'client-connect "/usr/local/bin/openvpn-addon audit-event"\n'
+            'client-disconnect "/usr/local/bin/openvpn-addon audit-event"'
+            if config.experimental_audit_log else ""
+        ),
     )
 
 
