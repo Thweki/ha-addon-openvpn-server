@@ -169,20 +169,35 @@ class PkiManager:
         return info
 
     def ensure_client_ips(self, names: list[str]) -> dict[str, str]:
-        """Assign a stable VPN address to every client and write its ccd entry."""
+        """Reconcile stable client addresses with the current VPN network and write ccd entries."""
         if not self.config.uses_client_config_dir or not names:
             self._clear_ccd()
             return {}
 
         network = ipaddress.IPv4Network(self.config.vpn_network, strict=False)
-        assignments = self._load_client_ips()
-        assignments = {name: ip for name, ip in assignments.items() if name in names}
+        reserved = {
+            network.network_address,
+            network.broadcast_address,
+            ipaddress.IPv4Address(int(network.network_address) + 1),
+        }
+        assignments: dict[str, str] = {}
+        taken: set[ipaddress.IPv4Address] = set()
+        for name, ip in self._load_client_ips().items():
+            if name not in names:
+                continue
+            try:
+                address = ipaddress.IPv4Address(ip)
+            except ipaddress.AddressValueError:
+                continue
+            if address not in network or address in reserved or address in taken:
+                continue
+            assignments[name] = str(address)
+            taken.add(address)
 
-        taken = set(assignments.values())
         free = (
             str(address)
             for address in network.hosts()
-            if address != ipaddress.IPv4Address(int(network.network_address) + 1) and str(address) not in taken
+            if address not in reserved and address not in taken
         )
         for name in names:
             if name in assignments:
