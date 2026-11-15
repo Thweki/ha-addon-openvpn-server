@@ -18,6 +18,7 @@ from .network import apply_network, ip_forward_enabled, remove_network
 from .pki import PkiManager
 from .renderer import effective_push_networks, render_client_config, render_server_config
 from .requests import archive_request, reject_request, scan_client_requests, write_result
+from .routes import collect_routes
 from .status import collect_status, status_json
 from .validator import config_warnings, validate_client_name, validate_config
 from .webui import PanelActions, PanelServer, panel_bind_addresses
@@ -42,6 +43,8 @@ def build_parser() -> argparse.ArgumentParser:
     _command(subparsers, "init", cmd_init)
     _command(subparsers, "run", cmd_run)
     _command(subparsers, "status", cmd_status)
+    routes = subparsers.add_parser("routes", help="Dump runtime route directives as JSON (read-only)")
+    routes.set_defaults(func=cmd_routes)
 
     client = subparsers.add_parser("client", help="Manage OpenVPN client certificates and exports")
     client_sub = client.add_subparsers(dest="client_command", required=True)
@@ -144,6 +147,13 @@ def cmd_status(_: argparse.Namespace) -> int:
     config = load_and_validate()
     print(status_json(config))
     return 0
+
+
+def cmd_routes(_: argparse.Namespace) -> int:
+    # Runtime paths do not depend on options; diagnostics must work with bad options too.
+    report = collect_routes(AddonConfig())
+    print(json.dumps(report, indent=2))
+    return 0 if report["complete"] else 1
 
 
 def cmd_client_create(args: argparse.Namespace) -> int:
