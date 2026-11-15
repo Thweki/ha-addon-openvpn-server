@@ -14,6 +14,7 @@ from typing import Any, Callable
 
 from .config import DATA_ROOT, AddonConfig, load_config
 from .health import collect_health, worst_status
+from .metrics import collect_metrics, prometheus_metrics
 from .network import apply_network, ip_forward_enabled, remove_network
 from .pki import PkiManager
 from .renderer import effective_push_networks, render_client_config, render_server_config
@@ -42,6 +43,10 @@ def build_parser() -> argparse.ArgumentParser:
     _command(subparsers, "init", cmd_init)
     _command(subparsers, "run", cmd_run)
     _command(subparsers, "status", cmd_status)
+
+    metrics = subparsers.add_parser("metrics", help="Print anonymous, read-only OpenVPN usage metrics")
+    metrics.add_argument("--format", choices=("json", "prometheus"), default="json")
+    metrics.set_defaults(func=cmd_metrics)
 
     client = subparsers.add_parser("client", help="Manage OpenVPN client certificates and exports")
     client_sub = client.add_subparsers(dest="client_command", required=True)
@@ -143,6 +148,20 @@ def cmd_run(_: argparse.Namespace) -> int:
 def cmd_status(_: argparse.Namespace) -> int:
     config = load_and_validate()
     print(status_json(config))
+    return 0
+
+
+def cmd_metrics(args: argparse.Namespace) -> int:
+    try:
+        config = load_and_validate()
+    except (OSError, ValueError, TypeError):
+        print("Unable to load valid add-on settings for metrics.", file=sys.stderr)
+        return 1
+    metrics = collect_metrics(config)
+    if args.format == "prometheus":
+        print(prometheus_metrics(metrics), end="")
+    else:
+        print(json.dumps(metrics, indent=2))
     return 0
 
 
