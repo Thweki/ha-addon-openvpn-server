@@ -114,6 +114,36 @@ flowchart LR
   D --> E["Home LAN<br/>192.168.1.0/24"]
 ```
 
+## Inspect Pushed DNS
+
+Inside the add-on container, run:
+
+```bash
+openvpn-addon dns
+```
+
+This read-only command prints JSON listing explicit global DNS pushes in
+`/data/openvpn/runtime/server.conf`, with source line numbers. It preserves order
+and duplicates, so you can check the generated configuration when troubleshooting
+name resolution. It reports the file on disk, not pending add-on settings or DNS
+confirmed active on a client. Client support for pushed DNS varies by platform
+([OpenVPN manual](https://openvpn.net/community-docs/community-articles/openvpn-2-6-manual/)).
+
+Supported pushes are `dhcp-option DNS`, `DNS6`, `DOMAIN`, `DOMAIN-SEARCH`,
+`ADAPTER_DOMAIN_SUFFIX`, `block-outside-dns`, and `register-dns`. Domain values
+must be ASCII DNS names (punycode is accepted). The newer `dns` syntax, includes,
+client configuration directories, scripts and push overrides are not evaluated;
+their presence produces warnings and `complete: false`. Entries are declarations,
+not an evaluated effective push list. Missing, unreadable or malformed files also
+produce warnings. An empty list with `complete: true` means no supported DNS
+pushes were found. The command exits successfully when it produces a report;
+scripts should inspect `complete` and `warnings` before relying on the entries.
+
+No keys, client profiles or referenced files are opened, no external commands or
+DNS queries are run, and no files or settings are changed. Symlinked runtime
+directories/files and non-regular files are refused. Raw configuration lines and
+parser error details are never included in the output.
+
 ## Client Certificates
 
 Two modes, selected by `duplicate_cn`:
