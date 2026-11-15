@@ -66,6 +66,8 @@ def validate_config(config: AddonConfig) -> None:
 
 
 def validate_client_name(name: str) -> None:
+    if name == "server":
+        raise ValueError("Client name 'server' is reserved for the OpenVPN server identity.")
     if not CLIENT_NAME_RE.match(name):
         raise ValueError(
             "Client name must start with an alphanumeric character and use only "
