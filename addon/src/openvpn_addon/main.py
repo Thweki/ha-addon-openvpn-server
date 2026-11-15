@@ -13,6 +13,7 @@ from pathlib import Path
 from typing import Any, Callable
 
 from .config import DATA_ROOT, AddonConfig, load_config
+from .crl import inspect_crl, render_crl
 from .health import collect_health, worst_status
 from .network import apply_network, ip_forward_enabled, remove_network
 from .pki import PkiManager
@@ -42,6 +43,12 @@ def build_parser() -> argparse.ArgumentParser:
     _command(subparsers, "init", cmd_init)
     _command(subparsers, "run", cmd_run)
     _command(subparsers, "status", cmd_status)
+
+    crl = subparsers.add_parser("crl", help="Inspect the signed OpenVPN revocation list")
+    crl_sub = crl.add_subparsers(dest="crl_command", required=True)
+    show = crl_sub.add_parser("show", help="Verify and print CRL metadata without changing PKI")
+    show.add_argument("--format", choices=("text", "json"), default="text")
+    show.set_defaults(func=cmd_crl_show)
 
     client = subparsers.add_parser("client", help="Manage OpenVPN client certificates and exports")
     client_sub = client.add_subparsers(dest="client_command", required=True)
@@ -144,6 +151,17 @@ def cmd_status(_: argparse.Namespace) -> int:
     config = load_and_validate()
     print(status_json(config))
     return 0
+
+
+def cmd_crl_show(args: argparse.Namespace) -> int:
+    # Paths do not depend on options. Inspection also works with broken settings.
+    try:
+        report = inspect_crl(AddonConfig().pki_dir)
+    except ValueError as error:
+        print(f"CRL inspection failed: {error}", file=sys.stderr)
+        return 1
+    print(render_crl(report, args.format))
+    return 0 if report["status"] == "current" else 1
 
 
 def cmd_client_create(args: argparse.Namespace) -> int:
